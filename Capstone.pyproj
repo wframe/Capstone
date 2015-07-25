@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{62c6768a-8a8e-4568-9839-391107749a1b}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>Midifinder\Midifinder\spiders\startscrapy.py</StartupFile>
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <InterpreterVersion />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Midifinder\Midifinder\items.py" />
+    <Compile Include="Midifinder\Midifinder\pipelines.py" />
+    <Compile Include="Midifinder\Midifinder\settings.py" />
+    <Compile Include="Midifinder\Midifinder\spiders\midi.py" />
+    <Compile Include="Midifinder\Midifinder\spiders\startscrapy.py" />
+    <Compile Include="Midifinder\Midifinder\spiders\__init__.py" />
+    <Compile Include="Midifinder\Midifinder\__init__.py" />
+    <Compile Include="reinforcementlearning\Cat vs Mouse exploration\cellular.py" />
+    <Compile Include="reinforcementlearning\Cat vs Mouse exploration\egoMouseLook.py" />
+    <Compile Include="reinforcementlearning\Cat vs Mouse exploration\qlearn.py" />
+    <Compile Include="reinforcementlearning\Cat vs Mouse exploration\qlearn_mod_random.py" />
+    <Compile Include="reinforcementlearning\Combination allo and ego\cellular.py" />
+    <Compile Include="reinforcementlearning\Combination allo and ego\egoalloBasic.py" />
+    <Compile Include="reinforcementlearning\Combination allo and ego\mouse.py" />
+    <Compile Include="reinforcementlearning\Combination allo and ego\qlearn.py" />
+    <Compile Include="reinforcementlearning\Egocentric\cellular.py" />
+    <Compile Include="reinforcementlearning\Egocentric\egoCliffBasic.py" />
+    <Compile Include="reinforcementlearning\Egocentric\mouse.py" />
+    <Compile Include="reinforcementlearning\Egocentric\qlearn.py" />
+    <Compile Include="reinforcementlearning\SARSA vs Qlearn cliff\cellular.py" />
+    <Compile Include="reinforcementlearning\SARSA vs Qlearn cliff\cliff_Q.py" />
+    <Compile Include="reinforcementlearning\SARSA vs Qlearn cliff\cliff_S.py" />
+    <Compile Include="reinforcementlearning\SARSA vs Qlearn cliff\mouse.py" />
+    <Compile Include="reinforcementlearning\SARSA vs Qlearn cliff\qlearn.py" />
+    <Compile Include="reinforcementlearning\SARSA vs Qlearn cliff\sarsa.py" />
+    <Compile Include="reinforcementlearning\SARSA.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="reinforcementlearning\Cat vs Mouse exploration\barrier2.txt" />
+    <Content Include="reinforcementlearning\Cat vs Mouse exploration\waco.txt" />
+    <Content Include="reinforcementlearning\Combination allo and ego\worlds\barrier.txt" />
+    <Content Include="reinforcementlearning\Combination allo and ego\worlds\barrier2.txt" />
+    <Content Include="reinforcementlearning\Combination allo and ego\worlds\barrier3.txt" />
+    <Content Include="reinforcementlearning\Combination allo and ego\worlds\bigmap.txt" />
+    <Content Include="reinforcementlearning\Combination allo and ego\worlds\cliff.txt" />
+    <Content Include="reinforcementlearning\Combination allo and ego\worlds\cliffs.txt" />
+    <Content Include="reinforcementlearning\Egocentric\cliffs.txt" />
+    <Content Include="reinforcementlearning\SARSA vs Qlearn cliff\cliff.txt" />
+    <Content Include="reinforcementlearning\SARSA vs Qlearn cliff\grid.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Midifinder\" />
+    <Folder Include="Midifinder\Midifinder" />
+    <Folder Include="Midifinder\Midifinder\spiders" />
+    <Folder Include="reinforcementlearning" />
+    <Folder Include="reinforcementlearning\Cat vs Mouse exploration" />
+    <Folder Include="reinforcementlearning\Combination allo and ego" />
+    <Folder Include="reinforcementlearning\Combination allo and ego\worlds" />
+    <Folder Include="reinforcementlearning\Egocentric" />
+    <Folder Include="reinforcementlearning\SARSA vs Qlearn cliff" />
+  </ItemGroup>
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+</Project>
