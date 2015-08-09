@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{62c6768a-8a8e-4568-9839-391107749a1b}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>Midifinder\Midifinder\spiders\startscrapy.py</StartupFile>
+    <StartupFile>midispider\midispider\spiders\startscrapy.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -21,13 +21,13 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Midifinder\Midifinder\items.py" />
-    <Compile Include="Midifinder\Midifinder\pipelines.py" />
-    <Compile Include="Midifinder\Midifinder\settings.py" />
-    <Compile Include="Midifinder\Midifinder\spiders\midi.py" />
-    <Compile Include="Midifinder\Midifinder\spiders\startscrapy.py" />
-    <Compile Include="Midifinder\Midifinder\spiders\__init__.py" />
-    <Compile Include="Midifinder\Midifinder\__init__.py" />
+    <Compile Include="midispider\midispider\items.py" />
+    <Compile Include="midispider\midispider\pipelines.py" />
+    <Compile Include="midispider\midispider\settings.py" />
+    <Compile Include="midispider\midispider\spiders\midiworld.py" />
+    <Compile Include="midispider\midispider\spiders\startscrapy.py" />
+    <Compile Include="midispider\midispider\spiders\__init__.py" />
+    <Compile Include="midispider\midispider\__init__.py" />
     <Compile Include="reinforcementlearning\Cat vs Mouse exploration\cellular.py" />
     <Compile Include="reinforcementlearning\Cat vs Mouse exploration\egoMouseLook.py" />
     <Compile Include="reinforcementlearning\Cat vs Mouse exploration\qlearn.py" />
@@ -49,6 +49,12 @@
     <Compile Include="reinforcementlearning\SARSA.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="midispider\midispider\items.pyc" />
+    <Content Include="midispider\midispider\settings.pyc" />
+    <Content Include="midispider\midispider\spiders\midiworld.pyc" />
+    <Content Include="midispider\midispider\spiders\__init__.pyc" />
+    <Content Include="midispider\midispider\__init__.pyc" />
+    <Content Include="midispider\scrapy.cfg" />
     <Content Include="reinforcementlearning\Cat vs Mouse exploration\barrier2.txt" />
     <Content Include="reinforcementlearning\Cat vs Mouse exploration\waco.txt" />
     <Content Include="reinforcementlearning\Combination allo and ego\worlds\barrier.txt" />
@@ -62,9 +68,9 @@
     <Content Include="reinforcementlearning\SARSA vs Qlearn cliff\grid.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Midifinder\" />
-    <Folder Include="Midifinder\Midifinder" />
-    <Folder Include="Midifinder\Midifinder\spiders" />
+    <Folder Include="midispider\" />
+    <Folder Include="midispider\midispider\" />
+    <Folder Include="midispider\midispider\spiders\" />
     <Folder Include="reinforcementlearning" />
     <Folder Include="reinforcementlearning\Cat vs Mouse exploration" />
     <Folder Include="reinforcementlearning\Combination allo and ego" />
