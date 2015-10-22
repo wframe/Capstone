@@ -1,4 +1,4 @@
-from __future__ import division
+﻿from __future__ import division
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.exceptions import CloseSpider
 import matplotlib.pyplot as plt
@@ -27,9 +27,6 @@ class MidiSpider(CrawlSpider):
 				Rule(LinkExtractor(allow=(r'.*',), deny=deny, process_value=remove_querystring), follow=True),
 			)
 
-	def parse(self, response):
-		print 'poop'
-		print 'poop'
 
 	def process(self, response):
 		reqs = []

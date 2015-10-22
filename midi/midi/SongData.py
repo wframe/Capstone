@@ -71,7 +71,7 @@ class PitchMap(object):
 					parentIndex = (bubbleIndex - 1) / 2
 					parentPitch = self.Index_Pitch[parentIndex]
 					parentLength = self.Pitch_Length[parentPitch]
-	def upsertAction(self, pitch, incrementation=1):
+	def upsertPitch(self, pitch, incrementation=1):
 		if pitch not in self.Pitch_Length:
 			self.Pitch_Length[pitch] = incrementation
 			self.Pitch_Index[pitch] = self.top
@@ -86,15 +86,32 @@ class PitchMap(object):
 				self.bubbleUp(index)
 
 class StartState(object):
-    def __init__(self, pitch, beatspermeasure, beatindex, actiongenerated):
+	def __init__(self, pitch, beatspermeasure, beatindex, actiongenerated):
 		self.pitch = pitch
 		self.beatwithinmeasure = beatindex % beatspermeasure
 		self.actiongenerated = actiongenerated
+
 class FeatureVector(object):
-	 def __init__(self, vector, actiongenerated):
+	def __init__(self, vector, actiongenerated):
 		 self.vector = vector
 		 self.actiongenerated = actiongenerated
 
+class SongContextState(object):
+	def __init__(self,previousPitch, currentBarNumber, currentlyHeldNote, beat):
+		self.songPitchMap = PitchMap()
+		self.barPitchMap = PitchMap()
+		self.updownsame = ['null']*SongData.TRAJECTORYHISTORYSPAN
+		self.currentBeatIndex = beat
+		self.previousPitch = previousPitch 
+		self.currentlyHeldNote = currentlyHeldNote
+	def update(self,pitch,currentlyHeldNote):
+		self.currentBeatIndex+=1
+		udsSymbol = SongData.getUDSSymbol(self.previousPitch, self.currentlyHeldNote)					
+		SongData.updateUDS(self.updownsame, udsSymbol)		
+		self.songPitchMap.upsertPitch(pitch)
+		if self.currentBeatIndex%SongData.BEATS_PER_BAR==0:
+			self.barPitchMap= PitchMap()
+		self.barPitchMap.upsertPitch(pitch)
 class SongData(object):
 	REST = 128
 	HOLD = 129
@@ -105,9 +122,11 @@ class SongData(object):
 	HINOTE = 84
 
 	BEATS_PER_BAR = 32
+	MAXHOLDBARS = 2
 
+	TRAJECTORYHISTORYSPAN = 8
 
-	def __init__(self, pattern, filename):  
+	def __init__(self, pattern, filename,tracknumber=1):  
 		self.filename = filename
 		self.actionset = []
 		self.featurevectors = []
@@ -122,18 +141,26 @@ class SongData(object):
 
 		BEATS_PER_BAR = self.BEATS_PER_BAR  
 
-		track = pattern[1]			#pattern has been preprocessed to contain only 
-									#one track of musical information, which contains the
-									#heuristically selected, expected melody 
+
+		track = pattern[tracknumber]			
+		
+		self.uniquepitches = set()
 
 		resolution = pattern.resolution							#length of quarter note
 		actionLength = resolution/float(BEATS_PER_BAR/4)		#length of action
 		     
-		notes = [
-				(track[idx],track[idx+1])						#pair note ons with note offs 
-				for idx, evt in enumerate(track) 
-				if evt.name == 'Note On' and idx % 2 == 0
-				]
+		#pair note ons with note offs
+		track = [evt for evt in track if evt.name == 'Note On' or evt.name == 'Note Off']
+		try:
+			notemod = next((jdx for jdx, evt in enumerate(track) if evt.name == 'Note On'), None) % 2
+			notes = [
+					(track[idx],track[idx+1])						 
+					for idx, evt in enumerate(track) 
+					if track[idx].name == 'Note On' and 
+					idx%2 == notemod
+					]
+		except Exception as e:
+			print("error building notes list in:" + str(filename))
 		
 		#function to quantize note durations
 		def roundLength(actionLength, noteLength):
@@ -171,13 +198,19 @@ class SongData(object):
 
 				self.actionset += [HOLD]*(numberOfSustains-1)						#append hold actions for 
 																					#pitch duration - 1 time steps
+				self.uniquepitches.add(note[0].pitch)
 
 		self.actionset.append(END)													#append end of song action
+		try:
+			self.deleteLongHolds()
+		except IndexError:
+			print("index error deleting holds in " + str(self.filename))
 		self.startstate = self.findstartstate()
 		##now set feature vectors
 		#self.computeFeatureVectors(actions=self.actionset)			
 	
-	def computeFeatureVectors(self, actions):
+	def computeFeatureVectors(self, actions, filename=""):
+		print('computing features for filename: ' + filename)
 		states = set()
 		startindex = self.findstartindex()				#first non rest note
 		#FEATURES
@@ -209,10 +242,10 @@ class SongData(object):
 
 		previousPitch = currentlyHeldNote
 		
-		currentBarNumber = 0
+		currentBarNumber = 1
 		positionInCurrentBar = 0
 
-		TRAJECTORYHISTORYSPAN = 8
+		TRAJECTORYHISTORYSPAN = self.TRAJECTORYHISTORYSPAN 
 		updownsame = ['null']*TRAJECTORYHISTORYSPAN									#last TRAJECTORYHISTORYSPAN actions:
 																						#u = up
 																						#d = down
@@ -225,7 +258,7 @@ class SongData(object):
 			positionInCurrentBar = idx % self.BEATS_PER_BAR
 
 			#here we are starting a new bar
-			if positionInCurrentBar == 0:
+			if positionInCurrentBar == 0 and idx >= SongData.BEATS_PER_BAR:
 				currentBarNumber += 1
 				#here we are starting any bar after the first bar... 
 				#this specifically means we should store the previous bar's pitch distribution dictionary, 
@@ -235,7 +268,7 @@ class SongData(object):
 					currentBarMod = (currentBarNumber-2) % 8
 					currentBarModPitchMap = barModPitchMapsList[currentBarMod]
 					for pitch in barPitchMap.Pitch_Length.keys():
-						currentBarModPitchMap.upsertAction(pitch=pitch, incrementation=barPitchMap.Pitch_Length[pitch]) 
+						currentBarModPitchMap.upsertPitch(pitch=pitch, incrementation=barPitchMap.Pitch_Length[pitch]) 
 					barPitchMap = PitchMap()
 			
 			#this is the case when a note changes	
@@ -244,9 +277,11 @@ class SongData(object):
 
 			if action != self.END:
 				
-				barPitchMap.upsertAction(currentlyHeldNote)			#inserts or updates, increments heaps length, 
+				barPitchMap.upsertPitch(currentlyHeldNote)			#inserts or updates, increments heaps length, 
 																	#and bubbles up if necessary 
-				songPitchMap.upsertAction(currentlyHeldNote)
+				if currentlyHeldNote != self.REST:
+					songPitchMap.upsertPitch(currentlyHeldNote)
+
 
 				#now construct feature vector
 				if idx > startindex:
@@ -263,105 +298,74 @@ class SongData(object):
 					#
 					try:
 						pitchMode = songPitchMap.getMax()
-						distanceTuple = self.constructRelativePitchDistanceVector(pitchMode=pitchMode, previousAction=previousPitch)				
+						distanceTuple = self.constructRelativePitchDistanceVector(pitchMode=pitchMode, previousAction=previousPitch, modemaynotexist=False)			
 						self.rowFeatureTuples["Distance_PreviousPitchToSongPitchMode"] = distanceTuple
-					except Exception as e:
-						print(filename+str(e))
-						import traceback, os.path
-						top = traceback.extract_stack()[-1]
-						print ', '.join([type(e).__name__, os.path.basename(top[0]), str(top[1])])
+					except Exception as e:					
+						print("exception in file: " + filename)
+						print("Distance_PreviousPitchToSongPitchMode index: " + str(idx))
 					#2.
 					#"Distance_CurrentBarsPitchModeToSongsPitchMode"
 					#
 					try:
-						pitchMode = barPitchMap.getMax()
-						distanceTuple = self.constructRelativePitchDistanceVector(pitchMode=pitchMode, previousAction=previousPitch)				
+
+						pitchMode = None if idx % SongData.BEATS_PER_BAR == 0 else barPitchMap.getMax()
+						distanceTuple = self.constructRelativePitchDistanceVector(pitchMode=pitchMode, previousAction=previousPitch, modemaynotexist=True)				
 						self.rowFeatureTuples["Distance_CurrentBarsPitchModeToSongsPitchMode"] = distanceTuple
 					except Exception as e:
-						print(filename+str(e))
-						import traceback, os.path
-						top = traceback.extract_stack()[-1]
-						print ', '.join([type(e).__name__, os.path.basename(top[0]), str(top[1])])
+						print("exception in file: " + filename)
+						print("Distance_CurrentBarsPitchModeToSongsPitchMode index: " + str(idx))
 					#3.
 					#"UpDownSame_PreviousEightPitchStrikes"
 					#
-					udsSymbol = ''
-					if previousPitch == self.REST:
-						udsSymbol += 'p'			
-					if currentlyHeldNote == self.REST:
-						udsSymbol += 'c'
-					if previousPitch != self.REST and currentlyHeldNote != self.REST:
-						if previousPitch < currentlyHeldNote:
-							udsSymbol = 'u'
-						if previousPitch > currentlyHeldNote:
-							udsSymbol = 'd'
-						if previousPitch == currentlyHeldNote:
-							udsSymbol = 's'
-				
-					del updownsame[0]
-					updownsame.append(udsSymbol)
-					udsTuple = tuple()
-					try:
-					    for i in updownsame:
-							if i == 'null':					#there was no previous
-								udsTuple += (0,0,0,0,0)
-							elif i == 'u':					#moved up from previous
-								udsTuple +=(1,0,0,0,0)
-							elif i == 'd':					#moved down from previous
-								udsTuple +=(0,1,0,0,0)
-							elif i == 's':					#moved down from previous
-								udsTuple +=(0,0,1,0,0)
-							else:
-								udsTuple +=(0,0,0)
-								if 'p' in i:				#previous was a rest
-									udsTuple +=(1,)
-								else:
-									udsTuple +=(0,)			#previous was a rest
-								if 'c' in i: 
-									udsTuple +=(1,)			#current is a rest
-								else:
-									udsTuple +=(0,)			#current not a rest
-					except Exception as e:
-						print(filename+str(e))
-						import traceback, os.path
-						top = traceback.extract_stack()[-1]
-						print ', '.join([type(e).__name__, os.path.basename(top[0]), str(top[1])])
+					udsSymbol = self.getUDSSymbol(previousPitch, currentlyHeldNote)
+					SongData.updateUDS(updownsame, udsSymbol)
+					udsTuple = SongData.getUDSTuple(updownsame)					
 
 					self.rowFeatureTuples["UpDownSame_PreviousEightPitchStrikes"] = udsTuple
 
 					#4.
 					#"SongBarMod4"
 					#
-					barMod4Tuple = tuple()
-					barMod4 = (currentBarNumber-1)%4
-
-					barMod4Tuple += (0,)*barMod4+(
-									(1,))+(
-									(0,)*(3-barMod4))
+					barMod4Tuple = SongData.getBarModTuple(currentBarNumber)
 
 					self.rowFeatureTuples["SongBarMod4"] = barMod4Tuple
 
 					features = [self.rowFeatureTuples[feature] for feature in tupleOfFeatures]		
-																									#get all the feature tuples
-					featvec = tuple(bit for f in features for bit in f)								#store them as one vector
+																											#get all the feature tuples
+					featvec = tuple(bit for f in features for bit in f)										#store them as one vector
 					try:
-						feature = FeatureVector(featvec,self.findaction(idx, songPitchMap.getPitchMax(self.REST)))	#construct feature object
+						feature = FeatureVector(featvec,self.findaction(
+												idx, songPitchMap.getPitchMax(self.REST)))					#construct feature object
 					except IndexError:
-						print("Bad index access attempting to construct feature at actionset index " + str(idx) + " in file: " + self.filename )
-					if(len(featvec)!=84):
+						print(
+							"Bad index access attempting to construct feature at actionset index "
+						    + str(idx) + " in file: " + self.filename)
+					if(len(featvec)!=83):
 						print(self.filename)
 					else:
 						self.featurevectors.append(feature)			
 				previousPitch = currentlyHeldNote	
-
-	def constructRelativePitchDistanceVector(self, pitchMode, previousAction):
+	
+	@staticmethod
+	def constructRelativePitchDistanceVector(pitchMode, previousAction, modemaynotexist):
 		distanceTuple = ()
-		distanceExists = True
-		if previousAction == self.REST:										#previous action was rest bit (1 bit)
-			distanceTuple += (1,)
+		newbit = ()
+		distanceExists = True if pitchMode is not None else False
+		if previousAction == SongData.REST:										#previous action was rest bit (1 bit)
+			newbit = (1,)
+			distanceTuple += newbit
 			distanceExists = False
 		else:
-			distanceTuple += (0,)
+			newbit = (0,)
+			distanceTuple += newbit
+		if modemaynotexist:
+			if pitchMode == SongData.REST:										#previous action was rest bit (1 bit)
+				newbit = (1,)
+				distanceTuple += newbit
+				distanceExists = False
+			else:
+				newbit = (0,)
+				distanceTuple += newbit
 		if distanceExists:													#was i pitches above pitchMode bits (12 bits) 
 			previousActionMod = previousAction % 12
 			pitchDifference =	(previousAction%12-pitchMode%12
@@ -371,9 +375,11 @@ class SongData(object):
 								previousAction%12+12-pitchMode%12)
 			distanceTuple +=	(0,)*pitchDifference+(
 								(1,))+(
-								(0,)*(11-pitchDifference))			
+								(0,)*(11-pitchDifference))	
+				
 		else:
 			distanceTuple += (0,)*12
+
 		if distanceExists:
 			pitchDifference =  previousAction-pitchMode
 			wasAbove = True if pitchDifference >= 0 else False
@@ -385,9 +391,77 @@ class SongData(object):
 
 		else:
 			distanceTuple += (0,)*2 + (0,)*4
-
 		return distanceTuple
+
+	@staticmethod
+	def getUDSSymbol(previousPitch, currentlyHeldNote):
+		udsSymbol = ''
+		if previousPitch == SongData.REST:
+			udsSymbol += 'p'			
+		if currentlyHeldNote == SongData.REST:
+			udsSymbol += 'c'
+		if previousPitch != SongData.REST and currentlyHeldNote != SongData.REST:
+			if previousPitch < currentlyHeldNote:
+				udsSymbol = 'u'
+			if previousPitch > currentlyHeldNote:
+				udsSymbol = 'd'
+			if previousPitch == currentlyHeldNote:
+				udsSymbol = 's'
+		return udsSymbol
+	@staticmethod
+	def getUDSTuple(updownsame):
+		udsTuple = tuple()
+		try:
+			for i in updownsame:
+				if i == 'null':					#there was no previous
+					udsTuple += (0,0,0,0,0)
+				elif i == 'u':					#moved up from previous
+					udsTuple +=(1,0,0,0,0)
+				elif i == 'd':					#moved down from previous
+					udsTuple +=(0,1,0,0,0)
+				elif i == 's':					#moved down from previous
+					udsTuple +=(0,0,1,0,0)
+				else:
+					udsTuple +=(0,0,0)
+					if 'p' in i:				#previous was a rest
+						udsTuple +=(1,)
+					else:
+						udsTuple +=(0,)			#previous was a rest
+					if 'c' in i: 
+						udsTuple +=(1,)			#current is a rest
+					else:
+						udsTuple +=(0,)			#current not a rest
+		except Exception as e:
+			print("exception in file: " + filename)
+			print("UpDownSame_PreviousEightPitchStrikes index: " + str(idx)) 
+		return udsTuple
+
+	@staticmethod
+	def updateUDS(updownsame,udsSymbol):
+		del updownsame[0]
+		updownsame.append(udsSymbol)
 	
+	def deleteLongHolds(self):
+		for idx,action in enumerate(self.actionset):
+			if action == SongData.HOLD:
+				holdEnd = next((jdx for jdx, x in enumerate(self.actionset[idx:]) if x!= SongData.HOLD), None) 
+				maxLength = SongData.MAXHOLDBARS*SongData.BEATS_PER_BAR
+				holdLength = len(self.actionset[idx:holdEnd])
+				if holdLength >= maxLength: 
+					remainder = holdLength % SongData.BEATS_PER_BAR
+					self.actionset[idx+remainder:holdEnd+1] = []
+
+	@staticmethod	
+	def getBarModTuple(currentBarNumber):
+		barMod4Tuple = tuple()
+		barMod4 = (currentBarNumber-1)%4
+
+		barMod4Tuple += (0,)*barMod4+(
+						(1,))+(
+						(0,)*(3-barMod4))
+		return barMod4Tuple 
+
+
 	def findstartstate(self):
 		startindex = self.findstartindex()
 		startpitch = self.actionset[startindex]
@@ -396,11 +470,10 @@ class SongData(object):
 		return next((i for i, x in enumerate(self.actionset) if x!= self.REST and x!= self.HOLD), None)
 	def findaction(self,index,pitchmode):
 		try:
-			currentobservation = self.actionset[index]
 			nextobservation = self.actionset[index+1]
 			if nextobservation in [self.NULL, self.REST, self.END, self.HOLD]:
-				return i
-			return pitchmode-nextobservation 
+				return nextobservation
+			return nextobservation-pitchmode
 		except IndexError:
 			print(self.filename + " attempted a bad index access in findaction.")
 			print("\t" + "occurred attempting to access index " + str(index+1))
@@ -417,7 +490,6 @@ class SongData(object):
 	#	observedstates = pickle.load(input)
 	#print('featurevectors length: )' + len(featurevectors))
 	#print('observedstates: )' + len(observedstates))
-	#print('poop')
 
 	#with open('SongDataList.pkl', 'wb') as output:
 	#    pickle.dump(songs, output)

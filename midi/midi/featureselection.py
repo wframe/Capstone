@@ -5,7 +5,7 @@ try:
    import cPickle as pickle
 except:
    import pickle
-incidence_thresh = .93
+incidence_thresh = .80
 with open('X.pkl', 'rb') as input:
 	X = pickle.load(input)	
 	sel = VarianceThreshold(threshold=(incidence_thresh * (1 - incidence_thresh)))

@@ -1,4 +1,4 @@
-from __future__ import division
+﻿from __future__ import division
 try:
    import cPickle as pickle
 except:
@@ -27,15 +27,12 @@ def hasChords(track):
 					return True
 	return False
 absolute_pos = 0
-folder = os.path.join('melodies','noChords')
+folder = os.path.join('midi','midi','melodies','noChords')
 pitches = set()
 for p_idx,filename in enumerate(os.listdir(folder)):
 	try:  
 		song_path = os.path.join(folder, filename)
 		pattern = midi.read_midifile(song_path)
-		for event in pattern[1]:
-			if event.name == 'poop':
-				poop = 'poop'
 		#if not hasChords(pattern)
 	except Exception as e:
 		print(e)

@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{62c6768a-8a8e-4568-9839-391107749a1b}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>midi\midi\calculatefeatures.py</StartupFile>
+    <StartupFile>midi\midi\GenerateRandomPolicy.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -39,7 +39,16 @@
     <Compile Include="midi\midi\featureselection.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="midi\midi\GenerateRandomPolicy.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="midi\midi\LargeDataset.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="midi\midi\ML.py" />
+    <Compile Include="midi\midi\pipeline1.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="midi\midi\randompolicy.py">
       <SubType>Code</SubType>
     </Compile>
@@ -53,6 +62,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="midi\midi\valid_filenames.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="midi\midi\scriptin.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="reinforcementlearning\Cat vs Mouse exploration\cellular.py" />
