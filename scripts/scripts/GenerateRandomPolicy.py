@@ -68,22 +68,25 @@ def Main(featurevectors,TOTALSONGSTOMONTECARLO = 1):
 		while True:
 			some = None
 			
-	def RecursiveSearchForEnd(node):
-		if node.feature in observedstates:
-			node.prospects = copy.deepcopy(observedstates[node.feature])
-			while len(node.prospects.keys()) > 0:
-				action = drawActionNoRep(node.prospects)
-				del node.prospects[action]
-				node.actiongenerated = action 
-				if action == SongData.END:
-					print('completed song')
-					return node
-				context = copy.deepcopy(node.context)
-				context.update(node.context.currentlyHeldNote,findevent(action, node.context.songPitchMap.getMax()))
-				if action == 128:
- 					print('poop')
-				feature = constructFeature(context)
-				lastscion = RecursiveSearchForEnd(Node(context, feature, node, None, None))
+	def RecursiveSearchForEnd(node,nodecount):
+		node.prospects = copy.deepcopy(observedstates[node.feature])
+		while len(node.prospects.keys()) > 0:
+			action = drawActionNoRep(node.prospects)
+			del node.prospects[action]
+			node.actiongenerated = action 
+			if action == SongData.END:
+				print('completed song')
+				return node
+
+			context = copy.deepcopy(node.context)
+			context.update(node.context.currentlyHeldNote,findevent(action, node.context.songPitchMap.getMax()))
+			feature = constructFeature(context)
+
+			if node.feature in observedstates:
+				node.context = context
+				nodecount += 1
+				lastscion = RecursiveSearchForEnd(Node(context, feature, node, None, None),nodecount)
+
 				if lastscion is not None and lastscion.actiongenerated == SongData.END:	
 					return lastscion
 
@@ -124,7 +127,8 @@ def Main(featurevectors,TOTALSONGSTOMONTECARLO = 1):
 		feature = constructFeature(context=context)
 		node = Node(context,feature,None,None,None)
 		try:
-			terminal = RecursiveSearchForEnd(node)
+			nodecount = 0
+			terminal = RecursiveSearchForEnd(node,nodecount)
 			if terminal is not None:
 				songs.append((start,terminal))
 				incorporateSongIntoPolicyAndMonteFeature(terminal, policy, montefeatures)
@@ -235,17 +239,17 @@ if __name__ == '__main__':
 				
 		
 		
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		

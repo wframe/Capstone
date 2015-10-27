@@ -104,7 +104,7 @@ class SongContextState(object):
 		self.currentBeatIndex = beat
 		self.previousPitch = previousPitch 
 		self.currentlyHeldNote = currentlyHeldNote
-	def update(self,pitch,currentlyHeldNote):
+	def update(self,pitch,newevent):
 		self.currentBeatIndex+=1
 		udsSymbol = SongData.getUDSSymbol(self.previousPitch, self.currentlyHeldNote)					
 		SongData.updateUDS(self.updownsame, udsSymbol)		
@@ -113,7 +113,8 @@ class SongContextState(object):
 			self.barPitchMap= PitchMap()
 		self.barPitchMap.upsertPitch(pitch)
 		self.previousPitch = pitch
-		self.currentlyHeldNote = currentlyHeldNote
+		if newevent != SongData.HOLD:
+			self.currentlyHeldNote = newevent
 class SongData(object):
 	REST = 128
 	HOLD = 129
