@@ -104,15 +104,18 @@ class SongContextState(object):
 		self.currentBeatIndex = beat
 		self.previousPitch = previousPitch 
 		self.currentlyHeldNote = currentlyHeldNote
-	def update(self,pitch,newevent):
+		self.songPitchMap.upsertPitch( previousPitch )
+		self.barPitchMap.upsertPitch( previousPitch )
+	def update(self,newevent):
+        #call after the next action
 		self.currentBeatIndex+=1
 		udsSymbol = SongData.getUDSSymbol(self.previousPitch, self.currentlyHeldNote)					
 		SongData.updateUDS(self.updownsame, udsSymbol)		
-		self.songPitchMap.upsertPitch(pitch)
+		self.songPitchMap.upsertPitch(newevent)
 		if self.currentBeatIndex%SongData.BEATS_PER_BAR==0:
 			self.barPitchMap= PitchMap()
-		self.barPitchMap.upsertPitch(pitch)
-		self.previousPitch = pitch
+		self.barPitchMap.upsertPitch(newevent)
+		self.previousPitch = self.currentlyHeldNote
 		if newevent != SongData.HOLD:
 			self.currentlyHeldNote = newevent
 class SongData(object):
@@ -210,7 +213,7 @@ class SongData(object):
 			print("index error deleting holds in " + str(self.filename))
 		self.startstate = self.findstartstate()
 		##now set feature vectors
-		#self.computeFeatureVectors(actions=self.actionset)			
+		self.computeFeatureVectors(actions=self.actionset)			
 	
 	def computeFeatureVectors(self, actions, filename=""):
 		print('computing features for filename: ' + filename)
