@@ -23,7 +23,7 @@ def Main():
 	#extract features
 	absolute_pos = 0
 	#folder = os.path.join('scripts','scripts','melodies','noChords')
-	folder = os.path.join(routes.root, 'largeDataset')
+	folder = os.path.join('C:\\', 'Users', 'William','Documents','GitHub','Capstone', 'largeDataset')
 	pitches = set()
 	songs = []
 	observedstates = set()

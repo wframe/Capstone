@@ -9,7 +9,6 @@ import os
 from operator import itemgetter
 from collections import OrderedDict, Counter
 import numpy as  np
-import routes
 from SongData import SongData, FeatureVector, StartState
 
 #these values should match what is in SongData
@@ -26,7 +25,7 @@ def Main():
 	import os
 	print('calculating features')
 	absolute_pos = 0
-	folder = os.path.join(routes.root, 'largeDataset')
+	folder = os.path.join('C:\\', 'Users', 'William','Documents','GitHub','Capstone', 'largeDataset')
 	pitches = set()
 	songs = []
 	observedstates = dict()
@@ -65,16 +64,16 @@ def Main():
 
 	X = np.array([feature.vector for feature in featurevectors],dtype=bool)
 
-	#with open('featurevectors.pkl', 'wb') as output:
-	#	pickle.dump(featurevectors, output, -1)
-	#with open('observedstates.pkl', 'wb') as output:
-	#	pickle.dump(observedstates, output, -1)
-	#with open('startstates.pkl', 'wb') as output:
-	#	pickle.dump(startstates, output, -1)
-	#with open('finalstates.pkl', 'wb') as output:
-	#	pickle.dump(finalstates, output, -1)
-	#with open('X.pkl', 'wb') as output:
-	#	pickle.dump(X, output, -1)
+	with open('featurevectors.pkl', 'wb') as output:
+		pickle.dump(featurevectors, output, -1)
+	with open('observedstates.pkl', 'wb') as output:
+		pickle.dump(observedstates, output, -1)
+	with open('startstates.pkl', 'wb') as output:
+		pickle.dump(startstates, output, -1)
+	with open('finalstates.pkl', 'wb') as output:
+		pickle.dump(finalstates, output, -1)
+	with open('X.pkl', 'wb') as output:
+		pickle.dump(X, output, -1)
 
 if __name__ == "__main__":
 	Main()

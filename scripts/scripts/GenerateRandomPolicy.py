@@ -68,9 +68,7 @@ def Main(featurevectors,TOTALSONGSTOMONTECARLO = 1):
 		while True:
 			some = None
 			
-	def RecursiveSearchForEnd(node,newevent,nodecount):
-		context.update(newevent)
-		node.feature = constructFeature(context=context)
+	def RecursiveSearchForEnd(node,nodecount):
 		node.prospects = copy.deepcopy(observedstates[node.feature])
 		while len(node.prospects.keys()) > 0:
 			action = drawActionNoRep(node.prospects)
@@ -79,9 +77,16 @@ def Main(featurevectors,TOTALSONGSTOMONTECARLO = 1):
 			if action == SongData.END:
 				print('completed song')
 				return node
+
+			context = copy.deepcopy(node.context)
+			context.update(node.context.currentlyHeldNote,findevent(action, node.context.songPitchMap.getMax()))
+			feature = constructFeature(context)
+
 			if node.feature in observedstates:
+				node.context = context
 				nodecount += 1
-				lastscion = RecursiveSearchForEnd(Node(copy.deepcopy(node.context), None, node, None, None),findevent(action, node.context.songPitchMap.getMax()),nodecount)                 
+				lastscion = RecursiveSearchForEnd(Node(context, feature, node, None, None),nodecount)
+
 				if lastscion is not None and lastscion.actiongenerated == SongData.END:	
 					return lastscion
 
@@ -106,19 +111,24 @@ def Main(featurevectors,TOTALSONGSTOMONTECARLO = 1):
 		startPitch = previousPitch = start.pitch
 		startAction = start.actiongenerated
 	
-		secondevent = findevent(actiontaken=startAction,pitchmode=startPitch)	#second event, first after start state
+		event = findevent(actiontaken=startAction,pitchmode=startPitch)	#second event, first after start state
+		if event != SongData.HOLD:
+			currentlyHeldNote = event
+		else:
+			currentlyHeldNote = startPitch
 
 		print('startPitch ' + str(startPitch))
 		print('startAction ' + str(startAction))
-		print('currentlyHeldNote ' + str(secondevent))									
+		print('currentlyHeldNote ' + str(currentlyHeldNote))									
 		print('startBeat ' + str(startBeat))	
 
-		context = SongContextState(previousPitch,0,secondevent,startBeat)
-
-		node = Node(context=context,feature=None,parent=start,prospects=None,action=None)
+		context = SongContextState(previousPitch,0,currentlyHeldNote,startBeat)
+		context.update(previousPitch,currentlyHeldNote)	
+		feature = constructFeature(context=context)
+		node = Node(context,feature,None,None,None)
 		try:
 			nodecount = 0
-			terminal = RecursiveSearchForEnd(node,secondevent,nodecount)
+			terminal = RecursiveSearchForEnd(node,nodecount)
 			if terminal is not None:
 				songs.append((start,terminal))
 				incorporateSongIntoPolicyAndMonteFeature(terminal, policy, montefeatures)
@@ -158,7 +168,7 @@ def Main(featurevectors,TOTALSONGSTOMONTECARLO = 1):
 		events = []
 		nodes = []
 		startbeat = start.beatwithinmeasure
-		while type(node) is not StartState:
+		while node is not None:
 			parent = node.parent
 			nodes.append(node)
 			events.append(findevent(node.actiongenerated,node.context.songPitchMap.getMax())) 
