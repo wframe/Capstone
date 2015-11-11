@@ -51,6 +51,9 @@
     <Compile Include="scripts\scripts\randompolicy.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="scripts\scripts\routes.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="scripts\scripts\scikit_eigen.py">
       <SubType>Code</SubType>
     </Compile>

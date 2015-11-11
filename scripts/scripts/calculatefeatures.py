@@ -10,6 +10,7 @@ from operator import itemgetter
 from collections import OrderedDict, Counter
 import numpy as  np
 from SongData import SongData, FeatureVector, StartState
+import routes 
 
 #these values should match what is in SongData
 #and are here just for reference
@@ -25,7 +26,7 @@ def Main():
 	import os
 	print('calculating features')
 	absolute_pos = 0
-	folder = os.path.join('C:\\', 'Users', 'William','Documents','GitHub','Capstone', 'largeDataset')
+	folder = os.path.join(routes.root, 'largeDataset')
 	pitches = set()
 	songs = []
 	observedstates = dict()
@@ -41,11 +42,12 @@ def Main():
 		song_path = os.path.join(folder, filename)
 		pattern = midi.read_midifile(song_path)
 		song = SongData(pattern, filename)
-		startstate = song.findstartstate()
-		song.computeFeatureVectors(actions=song.actionset,filename=filename)
-		startstates.append(startstate)
-		uniquestartstates.add((startstate.beatwithinmeasure,startstate.pitch%12))
-		for feature in song.featurevectors:
+		startstates.append(song.startstate)
+		uniquestartstates.add((song.startstate.beatwithinmeasure,song.startstate.pitch%12))
+		for idx,feature in enumerate(song.featurevectors):
+			if len(feature.vector) != 94:
+				print(str(filename) + " had malformed vector")
+				print("vector at index " + str(idx))
 			if feature.vector not in observedstates:
 				observedstates[feature.vector] = Counter()
 			observedstates[feature.vector][feature.actiongenerated] += 1

@@ -40,9 +40,9 @@ def Main():
 				song_path = os.path.join(folder, filename)
 				pattern = midi.read_midifile(song_path)
 				song = SongData(pattern, filename)
-				print("examining " + str(len(song.actionset)) + " actions for: " + filename)
+				print("examining " + str(len(song.eventset)) + " actions for: " + filename)
 
-				for action in song.actionset:
+				for action in song.eventset:
 					if (action > 84 and action < 128) or action < 48:
 						out_of_range = True
 					if song.startstate.pitch == 131:

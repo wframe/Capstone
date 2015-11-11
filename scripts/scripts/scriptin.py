@@ -5,9 +5,10 @@ except:
 from ExtractMidiData import write_track
 import os
 import midi
+import routes
 def Main():
 	print('hello hugh mon')
-	folder = os.path.join('C:\\', 'Users', 'William','Documents','GitHub','Capstone','downloads','midiworld')
+	folder = os.path.join(routes.root,'downloads','midiworld')
 	datasetdir =  os.path.join('C:\\', 'Users', 'William','Documents','GitHub','Capstone', 'largeDataset')
 	songs = []	
 	patterns = []
