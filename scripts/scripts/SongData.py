@@ -5,33 +5,135 @@ except:
    import pickle
 import midi
 import os.path
+import random
 import copy
 import os
 from operator import itemgetter
 from collections import OrderedDict
 import numpy as  np
 
+class StartState(object):
+    def __init__(self, pitch,beatindex, actiongenerated, filename):
+        self.pitch = pitch
+        self.beat = beatindex 
+        self.actiongenerated = actiongenerated
+        self.filename = filename
+    def display(self):
+        print("\tSTART STATE:")
+        print('\t\tpitch: ' + str(self.pitch))
+        print('\t\taction: ' + str(self.actiongenerated))                               
+        print('\t\tbeat: ' + str(self.beat))	
+        print('\t\tfile: ' + str(self.filename))
+
+class FeatureVector(object):
+    def __init__(self, vector, actiongenerated):
+         self.vector = vector
+         self.actiongenerated = actiongenerated
+
+class SongContextState(object):
+    def __init__(self,currentBarNumber,currentlyHeldNote, beat):
+        self.songPitchMap = PitchMap()
+        self.barPitchMap = PitchMap()
+        self.updownsame = ['null']*SongData.TRAJECTORYHISTORYSPAN
+        self.currentBeatIndex = beat
+        self.currentlyHeldNote = currentlyHeldNote
+        self.songPitchMap.upsertPitch(currentlyHeldNote)
+        self.barPitchMap.upsertPitch(currentlyHeldNote)
+    def update(self,newevent):
+        self.currentBeatIndex+=1
+        tonalcenter = self.songPitchMap.getPitchMax(SongData.REST)
+        actiongenerated = SongData.findaction(newevent,tonalcenter)
+        udsSymbol = SongData.getUDSSymbol(self.currentlyHeldNote, newevent)					
+        SongData.updateUDS(self.updownsame, udsSymbol)
+        if newevent != SongData.HOLD:
+            self.currentlyHeldNote = newevent	
+
+        self.feature = FeatureVector(constructFeature(self),None)
+        if len(self.feature.vector) != 103:
+            print('error calculating feature. length was only: ' + str(len(self.feature.vector)))
+        self.songPitchMap.upsertPitch(self.currentlyHeldNote)
+        if self.currentBeatIndex%SongData.BEATS_PER_BAR==0:
+            self.barPitchMap= PitchMap()
+        self.barPitchMap.upsertPitch(self.currentlyHeldNote)
+
+class Node(object):
+    def __init__(self, context, feature, parent, prospects, action,utility=None):
+        self.feature = feature
+        self.prospects = prospects
+        self.canonicalprospects = prospects
+        self.context = context
+        self.parent = parent
+        self.actiongenerated = action
+        self.isMutant = False
+        self.utility = utility
+    def display(self):
+        print('\tNODE: ')
+        print('\t\tfeature' + str(self.feature)) 
+        print('\t\tprospects: ' + str(self.prospects))
+        print('\t\tbeat index: ' + str(self.context.currentBeatIndex))
+
+    def __cmp__(self, other):
+        return cmp(self.utility, other.intAttribute)
+def drawStart(startstates):
+    return startstates[random.randint(0,len(startstates)-1)]
+
+def drawFeature(features):
+    return features[random.randint(0,len(features)-1)]
+
+def drawActionNoRep(actions):
+    list_of_key_instance_lists = [(key,)*actions[key] for key in actions.keys()]
+    instances = [instance for instance_list in list_of_key_instance_lists for instance in instance_list]
+    action = instances[random.randint(0,len(instances)-1)]
+    return action
+
+def findnextevent(actiontaken, pitchmode):
+    if actiontaken in [SongData.NULL, SongData.REST, SongData.END, SongData.HOLD]:
+        return actiontaken
+    return actiontaken-pitchmode 
+
 def findevent(actiontaken,pitchmode=None):
     if actiontaken in [SongData.NULL, SongData.REST, SongData.END, SongData.HOLD]:
         return actiontaken
     return actiontaken+pitchmode
 
-def constructFeature(context):	
-    songPitchMode = context.songPitchMap.getMax()
-    featureSongPitchTuple = SongData.constructRelativePitchDistanceVector(songPitchMode, context.currentlyHeldNote)
-    if context.currentBeatIndex % SongData.BEATS_PER_BAR == 0:
-        barPitchMode = None 
-    else:
-        barPitchMode = context.barPitchMap.getMax()
+def averageProspects(prospects1,prospects2):
+    for prospect in prospects2.keys():
+        if prospect in prospects1:
+            prospects1[prospect] += prospects2[prospect]
+        else: 
+            prospects1[prospect] = prospects2[prospect] 
+    for prospect in prospects1.keys():
+        prospects1[prospect] = int(round((prospects1[prospect] / float(2))))
+    return prospects1
 
+def sexuallyGenerateProspects(observedstates):
+    mommy = drawFeature(observedstates.keys())
+    daddy = drawFeature(observedstates.keys())
+    while(mommy == daddy):
+        daddy = drawFeature(observedstates.keys())
+    mommyProspects = copy.deepcopy(observedstates[mommy])
+    daddyProspects = copy.deepcopy(observedstates[daddy])
+    return averageProspects(mommyProspects,daddyProspects)
+
+def getOnes(vec):
+    return [idx for idx, elem in enumerate(vec) if elem==1]
+
+def printOnes(vec):
+    print('ONES: '+str(getOnes(vec)))
+
+def constructFeature(context):	
+    songPitchMode = context.songPitchMap.getPitchMax(SongData.REST)
+    featureSongPitchTuple = SongData.constructRelativePitchDistanceVector(songPitchMode, context.currentlyHeldNote)
+    barPitchMode = context.barPitchMap.getPitchMax(SongData.REST)
     featureBarPitchTuple = SongData.constructRelativePitchDistanceVector(barPitchMode, context.currentlyHeldNote) 
     featureUDSTuple = SongData.getUDSTuple(context.updownsame)
     featureBarMod = SongData.getBarModTuple((context.currentBeatIndex/SongData.BEATS_PER_BAR)+1)	 
-    return featureSongPitchTuple + featureBarPitchTuple + featureUDSTuple + featureBarMod 
-
-class PickleTainer(object):
-     def __init__(self, **kwargs):
-         self.__dict__.update(kwargs)
+    innerPos = interiorOctile(context.currentBeatIndex)
+    feature = featureSongPitchTuple + featureBarPitchTuple + featureUDSTuple + featureBarMod + innerPos + ((context.currentBeatIndex%2),)
+    return feature
+def interiorOctile(beat):
+    intOct = (beat%SongData.BEATS_PER_BAR) / 4
+    return (0,)*intOct+((1,))+((0,)*(7-intOct))
 
 class PitchMap(object):
     #some max heap functionality using dicts
@@ -49,18 +151,21 @@ class PitchMap(object):
         else:
             return None
     def getPitchMax(self,REST):
-        max = self.Index_Pitch[0]
-        if max != REST:
-            return self.Index_Pitch[0]
-        else:
-            pitch1 = self.Index_Pitch[1]
-            if self.top == 2:			
-                return pitch1				#2 elems total in heap
+        try:
+            max = self.Index_Pitch[0]
+            if max != REST:
+                return self.Index_Pitch[0]
             else:
-                pitch2 = self.Index_Pitch[2]
-                count1 = self.Pitch_Length[pitch1]
-                count2 = self.Pitch_Length[pitch2]
-                return pitch2 if count2 > count1 else pitch1
+                pitch1 = self.Index_Pitch[1]
+                if self.top == 2:			
+                    return pitch1				#2 elems total in heap
+                else:
+                    pitch2 = self.Index_Pitch[2]
+                    count1 = self.Pitch_Length[pitch1]
+                    count2 = self.Pitch_Length[pitch2]
+                    return pitch2 if count2 > count1 else pitch1
+        except KeyError:
+            return None
 
     def bubbleUp(self, bubbleIndex):
         def swap(bubbleIndex, parentIndex):
@@ -104,42 +209,6 @@ class PitchMap(object):
             if index > 0:															#max never bubbles up 
                 self.bubbleUp(index)
 
-class StartState(object):
-    def __init__(self, pitch, beatspermeasure, beatindex, actiongenerated):
-        self.pitch = pitch
-        self.beatwithinmeasure = beatindex % beatspermeasure
-        self.actiongenerated = actiongenerated
-
-class FeatureVector(object):
-    def __init__(self, vector, actiongenerated):
-         self.vector = vector
-         self.actiongenerated = actiongenerated
-
-class SongContextState(object):
-    def __init__(self,currentBarNumber,currentlyHeldNote, beat):
-        self.songPitchMap = PitchMap()
-        self.barPitchMap = PitchMap()
-        self.updownsame = ['null']*SongData.TRAJECTORYHISTORYSPAN
-        self.currentBeatIndex = beat
-        self.currentlyHeldNote = currentlyHeldNote
-        self.songPitchMap.upsertPitch(currentlyHeldNote)
-        self.barPitchMap.upsertPitch(currentlyHeldNote)
-    def update(self,newevent):
-        self.currentBeatIndex+=1
-        tonalcenter = self.songPitchMap.getPitchMax(SongData.REST)
-        actiongenerated = SongData.findaction(newevent,tonalcenter)
-        udsSymbol = SongData.getUDSSymbol(self.currentlyHeldNote, newevent)					
-        SongData.updateUDS(self.updownsame, udsSymbol)
-        if newevent != SongData.HOLD:
-            self.currentlyHeldNote = newevent	
-
-        self.feature = FeatureVector(constructFeature(self),None)
-    
-        self.songPitchMap.upsertPitch(self.currentlyHeldNote)
-        if self.currentBeatIndex%SongData.BEATS_PER_BAR==0:
-            self.barPitchMap= PitchMap()
-        self.barPitchMap.upsertPitch(self.currentlyHeldNote)
-
 class SongData(object):
     REST = 128
     HOLD = 129
@@ -176,20 +245,32 @@ class SongData(object):
 
         resolution = pattern.resolution							#length of quarter note
         actionLength = resolution/float(BEATS_PER_BAR/4)		#length of action
-        
-        def firstNoteIndex(trizack):
-            return next((i for i,x in enumerate(trizack) if x.name == 'Note On'))
-        initial_offset = sum(x.tick for x in track[0:firstNoteIndex(track)])     
+        def getNotes(track):
+            currNote, on, ticks, notes = (), False, 0, []
+            for idx, event in enumerate(track):
+                if 'Note' in event.name:
+                    event.tick += ticks
+                    currNote += (event,)
+                    on, ticks = not on, 0
+                    if not on:
+                        notes.append(currNote)
+                        currNote = ()  
+                else:
+                    ticks += event.tick
+            return notes 
+        def getTicks(on, off):
+            sum(x.tick for x in track[on+1:off])     
         #pair note ons with note offs
-        track = [evt for evt in track if evt.name == 'Note On' or evt.name == 'Note Off']
+        #track = [evt for evt in track if evt.name == 'Note On' or evt.name == 'Note Off']
         try:
-            notemod = next((jdx for jdx, evt in enumerate(track) if evt.name == 'Note On'), None) % 2
-            notes = [
-                    (track[idx],track[idx+1])						 
-                    for idx, evt in enumerate(track) 
-                    if track[idx].name == 'Note On' and 
-                    idx%2 == notemod
-                    ]
+            #notemod = next((jdx for jdx, evt in enumerate(track) if evt.name == 'Note On'), None) % 2
+            #notes = [
+            #        (track[idx],track[idx+1])						 
+            #        for idx, evt in enumerate(track) 
+            #        if track[idx].name == 'Note On' and 
+            #        idx%2 == notemod
+            #        ]
+            notes = getNotes(track)
         except Exception as e:
             print("error building notes list in:" + str(filename))
         
@@ -205,9 +286,8 @@ class SongData(object):
         
         #map midi notes to actions
         #each note is a 2-tuple containing a note on and note off signal
-        notes[0][0].tick += initial_offset 
         for note in notes:      
-            noteStart = note[0].tick                	                			#offset observed note value by
+            noteStart = note[0].tick - quantizationBias                             #offset observed note value by
                                                                                     #quantization bias from previous notes 
                                                                                     
                           
@@ -279,15 +359,15 @@ class SongData(object):
 
         startpitch = self.startstate.pitch
         context = SongContextState(0, startpitch, startindex)
-        startaction = self.findnextaction(startindex,context.songPitchMap.getPitchMax(SongData.REST))
-        self.startstate = StartState(startpitch, SongData.BEATS_PER_BAR, startindex, startaction)
+        startaction = self.findnextevent(startindex,context.songPitchMap.getPitchMax(SongData.REST))
+        self.startstate = StartState(startpitch, startindex, startaction, filename)
         #feature vectors
         firstfeatureIndex = startindex + 1
         for idx, event in enumerate(self.eventset[firstfeatureIndex:len(self.eventset)-1]):
             idx += firstfeatureIndex 
             context = copy.deepcopy(context)				
             context.update(event)
-            context.feature.actiongenerated = self.findnextaction(idx,context.songPitchMap.getPitchMax(SongData.REST))
+            context.feature.actiongenerated = self.findnextevent(idx,context.songPitchMap.getPitchMax(SongData.REST))
             self.featurevectors.append(context.feature)
 
             #bookkeeping first
@@ -435,7 +515,7 @@ class SongData(object):
     def findstartstate(self):
         startindex = self.findstartindex() 
         startpitch = self.eventset[startindex]
-        return StartState(startpitch, self.BEATS_PER_BAR, startindex, self.findnextaction(startindex,startpitch))	
+        return StartState(startpitch, startindex, self.findnextevent(startindex,startpitch),self.filename)	
     def findstartindex(self):
         return next((i for i, x in enumerate(self.eventset) if x!= self.REST and x!= self.HOLD), None)  
     @staticmethod	
@@ -443,15 +523,15 @@ class SongData(object):
         if event in [SongData.NULL, SongData.REST, SongData.END, SongData.HOLD]:
             return event
         return event-pitchmode
-    def findnextaction(self,index,pitchmode):
+    def findnextevent(self,index,pitchmode):
         try:
             nextobservation = self.eventset[index+1]
             return self.findaction(nextobservation, pitchmode)
         except IndexError:
-            print(self.filename + " attempted a bad index access in findnextaction.")
+            print(self.filename + " attempted a bad index access in findnextevent.")
             print("    " + "occurred attempting to access index " + str(index+1))
             print("    " + "true length of eventset was: " + str(len(self.eventset)))
-            print("    " + "current observation was: " + str(currentobservation))
+            print("    " + "current observation was: " + str(self.eventset[index]))
 
             
     #observedstates = set()
