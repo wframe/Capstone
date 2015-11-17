@@ -59,10 +59,12 @@ class MelodyMDP(MDP):
     def T(self, feature, act):
         encounteredstates = self.encounteredstates
         if act not in encounteredstates[feature]:
-            return (1.0, 0)
+            return None
         childfeatures = encounteredstates[feature][act]
         total = sum(childfeatures.values())
-        r = [ (childfeatures[f] / float(total), f) for f in childfeatures ]
+        #print('childfeatures: '+str(childfeatures))
+        r = [ ((childfeatures[f] / float(total)), f) for f in childfeatures ]
+        #print('\t returning r: '+str(r))
         return r
 
     def spawn(self, node):
@@ -84,6 +86,7 @@ class MelodyMDP(MDP):
                     encountered_children[action][candidate.feature] += 1
                     if not encountered or candidate.feature not in encountered_children[action]:
                         candidate.prospects = copy.deepcopy(self.observedstates[candidate.feature])
+                        candidate.generatedbyaction = action
                         children.append(candidate)
 
         self.frontier += children
@@ -94,10 +97,10 @@ class MelodyMDP(MDP):
             return [None]
         else:
             total = sum([ observedstates[state.feature][action] for action in observedstates[state.feature].keys() ])
-            return [ (float(count) / total, nextstate(state, action)) for action in observedstates[state.feature].keys() ]
+            return [ [float(count) / total, nextstate(state, action)] for action in observedstates[state.feature].keys() ]
 
 
-def value_iteration(mdp, epsilon = 0.001, MAXINNERITERATIONS = 10000):
+def value_iteration(mdp, epsilon = 0.001, MAXINNERITERATIONS = 100000):
     """Solving an MDP by value iteration. [Fig. 17.4]"""
     new_utilities = dict([ (f, 0) for f in mdp.observedstates.keys() ])
     R, T, gamma = mdp.R, mdp.T, mdp.gamma
@@ -105,6 +108,7 @@ def value_iteration(mdp, epsilon = 0.001, MAXINNERITERATIONS = 10000):
     while True:
         print 'OUTER LOOP OF VALUE ITERATION--'
         old_utilities = copy.deepcopy(new_utilities)
+
         delta = 0
         node.context.update(event)
         node.feature = node.context.feature.vector
@@ -124,16 +128,19 @@ def value_iteration(mdp, epsilon = 0.001, MAXINNERITERATIONS = 10000):
                 updates += 1
                 ev_list = []
                 for a in node.prospects.keys():
+
                     action_ev = 0
-                    for p, childfeature in T(s.feature, a):
-                        action_ev += p * old_utilities[childfeature]
+                    ret = T(s.feature, a)
+                    if ret is not None:
+                        for t in ret:
+                            p, childfeature = t
+                            action_ev += p * old_utilities[childfeature]
 
                     ev_list.append(action_ev)
 
                 new_utilities[s.feature] = R(s.feature) + gamma * max(ev_list)
                 delta = max(delta, abs(new_utilities[s.feature] - old_utilities[s.feature]))
 
-        print 'number of non zeroes in utilities: ' + str(len([ x for x in new_utilities if x != 0 ]))
         print '\tmax delta: ' + str(delta)
 
 

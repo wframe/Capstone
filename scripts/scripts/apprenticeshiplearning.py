@@ -1,4 +1,4 @@
-try:
+﻿try:
    import cPickle as pickle
 except:
     import pickle 
@@ -13,7 +13,7 @@ import ValueIteration as vi
 import GenerateRandomPolicy as grp
 from scipy.linalg import norm
 
-def Main(featurevectors,startstates,extendedstates,observedstates,finalstates,featureexpectations,espilon=.001):
+def Apprenticeship(featurevectors,startstates,extendedstates,finalstates,featureexpectations,espilon=.001):
     MuEMPIRICAL = (np.around(a=np.average([vec.vector for vec in featurevectors], axis=0),decimals=4))
     MuMONTE_1, MuMONTE_2 = featureexpectations, None
     MuHAT_1, MuHAT_2, w, t = None, None, None, None 
@@ -32,7 +32,6 @@ def Main(featurevectors,startstates,extendedstates,observedstates,finalstates,fe
             MuHAT_1 = np.array(MuHAT_2) + scale*(numerator/denominator)
             w = np.array(MuEMPIRICAL) - np.array(MuHAT_1)
             t = norm(w,2)
-        print(t)
         mdp = vi.MelodyMDP(startstates, w, finalstates, extendedstates)
         Pi_1 = vi.value_iteration(mdp)
         MuMONTE_1 = grp.Main(startstates,Pi_1,TOTALSONGSTOMONTECARLO=200)
@@ -44,4 +43,4 @@ if __name__ == '__main__':
     observedstates = pickle.load(open('observedstates.pkl','rb'))
     finalstates = pickle.load(open('finalstates.pkl','rb'))
     featureexpectations = pickle.load(open('monteexpectations.pkl','rb'))
-    Main(featurevectors,startstates,extendedstates,observedstates,finalstates,featureexpectations)
+    Apprenticeship(featurevectors,startstates,extendedstates,finalstates,featureexpectations)

@@ -24,12 +24,10 @@ class StartState(object):
         print('\t\taction: ' + str(self.actiongenerated))                               
         print('\t\tbeat: ' + str(self.beat))	
         print('\t\tfile: ' + str(self.filename))
-
 class FeatureVector(object):
     def __init__(self, vector, actiongenerated):
          self.vector = vector
          self.actiongenerated = actiongenerated
-
 class SongContextState(object):
     def __init__(self,currentBarNumber,currentlyHeldNote, beat):
         self.songPitchMap = PitchMap()
@@ -49,13 +47,11 @@ class SongContextState(object):
             self.currentlyHeldNote = newevent	
 
         self.feature = FeatureVector(constructFeature(self),None)
-        if len(self.feature.vector) != 103:
-            print('error calculating feature. length was only: ' + str(len(self.feature.vector)))
+
         self.songPitchMap.upsertPitch(self.currentlyHeldNote)
         if self.currentBeatIndex%SongData.BEATS_PER_BAR==0:
             self.barPitchMap= PitchMap()
         self.barPitchMap.upsertPitch(self.currentlyHeldNote)
-
 class Node(object):
     def __init__(self, context, feature, parent, prospects, action,utility=None):
         self.feature = feature
@@ -64,6 +60,7 @@ class Node(object):
         self.context = context
         self.parent = parent
         self.actiongenerated = action
+        self.generatedbyaction = None
         self.isMutant = False
         self.utility = utility
     def display(self):
@@ -260,16 +257,7 @@ class SongData(object):
             return notes 
         def getTicks(on, off):
             sum(x.tick for x in track[on+1:off])     
-        #pair note ons with note offs
-        #track = [evt for evt in track if evt.name == 'Note On' or evt.name == 'Note Off']
         try:
-            #notemod = next((jdx for jdx, evt in enumerate(track) if evt.name == 'Note On'), None) % 2
-            #notes = [
-            #        (track[idx],track[idx+1])						 
-            #        for idx, evt in enumerate(track) 
-            #        if track[idx].name == 'Note On' and 
-            #        idx%2 == notemod
-            #        ]
             notes = getNotes(track)
         except Exception as e:
             print("error building notes list in:" + str(filename))
@@ -323,9 +311,9 @@ class SongData(object):
         
     
     def computeFeatureVectors(self, actions, filename=""):
-        print('computing features for filename: ' + filename)
+        print('computing features for file: ' + filename)
         states = set()
-        startindex = self.findstartindex()			#first non rest note
+        startindex = self.findstartindex()			                                #first non rest note
         #FEATURES
         tupleOfFeatures=	(
                                 "Distance_PreviousPitchToSongPitchMode"
@@ -369,32 +357,7 @@ class SongData(object):
             context.update(event)
             context.feature.actiongenerated = self.findnextevent(idx,context.songPitchMap.getPitchMax(SongData.REST))
             self.featurevectors.append(context.feature)
-
-            #bookkeeping first
-            positionInCurrentBar = idx % self.BEATS_PER_BAR
-
-            #here we are starting a new bar
-            #if positionInCurrentBar == 0 and idx >= SongData.BEATS_PER_BAR:
-            #	currentBarNumber += 1
-            #	#here we are starting any bar after the first bar... 
-            #	#this specifically means we should store the previous bar's pitch distribution dictionary, 
-            #	#and reset the bar's state
-            #	if currentBarNumber > 1:
-            #		barPitchMapsList.append(context.barPitchMap)			#store previous bar's pitch distribution
-            #		currentBarMod = (currentBarNumber-2) % 8
-            #		currentBarModPitchMap = barModPitchMapsList[currentBarMod]
-            #		for pitch in context.barPitchMap.Pitch_Length.keys():
-            #			currentBarModPitchMap.upsertPitch(pitch=pitch, incrementation=context.barPitchMap.Pitch_Length[pitch]) 
-            #		barPitchMap = PitchMap()
-
-            #	#now construct feature vector
-            #	if idx > startindex:
-            #		tempDict = {-1:tupleOfFeatures}
-            #		self.rowFeatureTuples = dict([(i, k) for k, v in tempDict.
-            #								iteritems() 
-            #								for i in v])											
-
-    
+									    
     @staticmethod
     def constructRelativePitchDistanceVector(pitchMode, currentPitch):
         distanceTuple = ()
@@ -458,6 +421,7 @@ class SongData(object):
             elif currentlyHeld > nextEvent:
                 udsSymbol = 'd'
         return udsSymbol
+   
     @staticmethod
     def getUDSTuple(updownsame):
         udsTuple = tuple()
