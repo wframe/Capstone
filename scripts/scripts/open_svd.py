@@ -15,4 +15,4 @@ with open('s.pkl', 'rb') as input:
 	s = np.sort(s)
 with open('v.pkl', 'rb') as input:
 	v = pickle.load(input)
-print('poop')
+

@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{62c6768a-8a8e-4568-9839-391107749a1b}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>scripts\scripts\metrics.py</StartupFile>
+    <StartupFile>scripts\scripts\UnitTest.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -28,6 +28,9 @@
     <Compile Include="midispider\midispider\spiders\startscrapy.py" />
     <Compile Include="midispider\midispider\spiders\__init__.py" />
     <Compile Include="midispider\midispider\__init__.py" />
+    <Compile Include="scripts\scripts\compression.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="scripts\scripts\metrics.py">
       <SubType>Code</SubType>
     </Compile>
@@ -67,6 +70,12 @@
     <Compile Include="scripts\scripts\SongData.py" />
     <Compile Include="scripts\scripts\open_svd.py" />
     <Compile Include="scripts\scripts\svd.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="scripts\scripts\UnitTest.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="scripts\scripts\utilz.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="scripts\scripts\valid_filenames.py">

@@ -55,6 +55,7 @@ def Main():
             featurevectors.append(feature)
         if len(song.featurevectors) > 0:
             finalstates.add(song.featurevectors[len(song.featurevectors)-1])
+        songs.append(song)
 
     #except Exception as e:
         #	import traceback, os.path
@@ -67,6 +68,8 @@ def Main():
 
     X = np.array([feature.vector for feature in featurevectors],dtype=bool)
 
+    with open('songs.pkl', 'wb') as output:
+    	pickle.dump(songs, output, -1)
     with open('featurevectors.pkl', 'wb') as output:
     	pickle.dump(featurevectors, output, -1)
     with open('observedstates.pkl', 'wb') as output:

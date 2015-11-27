@@ -24,6 +24,11 @@ class StartState(object):
         print('\t\taction: ' + str(self.actiongenerated))                               
         print('\t\tbeat: ' + str(self.beat))	
         print('\t\tfile: ' + str(self.filename))
+class CompressedStart(object):
+    def __init__(self, startstate, compressedvector, actionset):
+        self.startstate = startstate
+        self.compvector = compressedvector
+        self.actionset = actionset
 class FeatureVector(object):
     def __init__(self, vector, actiongenerated):
          self.vector = vector
@@ -234,8 +239,7 @@ class SongData(object):
         HINOTE = self.HINOTE
 
         BEATS_PER_BAR = self.BEATS_PER_BAR  
-
-
+       
         track = pattern[tracknumber]			
         
         self.uniquepitches = set()
