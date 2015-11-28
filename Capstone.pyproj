@@ -75,6 +75,7 @@
     <Compile Include="scripts\scripts\UnitTest.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="scripts\scripts\UnitTest2.py" />
     <Compile Include="scripts\scripts\utilz.py">
       <SubType>Code</SubType>
     </Compile>

@@ -10,24 +10,25 @@ from collections import Counter
 import midi
 import uuid
 import heapq
-
+from utilz import *
 def initializetrajectory(startstates):
     start = drawStart(startstates)
     startbeat = start.beat			
     startpitch = previousPitch = start.pitch
     startaction = start.actiongenerated    
     event = findevent(actiontaken=startaction,pitchmode=startpitch)	#second event, first after start state
-    context = SongContextState(0,startpitch,startbeat)
+    context = SongContextState(startpitch,startbeat)
     node = Node(context=context, feature=None, parent=start, prospects=None, action=None)
     print('Initialized trajectory--')
     start.display()
     node.display()
     return start, event, node
 
-def incorporateSongIntoPolicyAndMonteFeature(node, policy, montefeatures):			    
+def incorporateSongIntoPolicyAndMonteFeature(node, policy):		
+    features = []	    
     while node is not None and type(node) is not StartState:
         parent = node.parent
-        montefeatures.append(node.feature)
+        features.append(node.feature)
         if node.feature not in policy:
             c = Counter()
             c[node.actiongenerated] = 1
@@ -35,6 +36,8 @@ def incorporateSongIntoPolicyAndMonteFeature(node, policy, montefeatures):
         else:
             policy[node.feature][node.actiongenerated] += 1
         node = parent
+    return list(reversed(features))
+
 
 def RecursiveSearchForEnd(node,newevent):
     #print('beat: ' + str(node.context.currentBeatIndex+1) + ' new event: ' + str(newevent))
@@ -65,10 +68,20 @@ def RecursiveSearchForEnd(node,newevent):
         if lastscion is not None and lastscion.actiongenerated == SongData.END:	
             return lastscion
 
+def BestFirstSearch(firstnode,firstevent):
+    def updateNodeAndFeature(node,feature):
+        context = copy.deepcopy(node.context)   
+        context.update(newevent)
+        node.context = context
+        node.feature = context.feature
+    updateNodeAndFeature(firstnode,firstevent)
+    node.prospects = copy.deepcopy(observedstates[node.feature])    
+
+
 def Main(startstates, observedstates, TOTALSONGSTOMONTECARLO = 1):
 
     newlygeneratedstates = dict()
-    montefeatures = []
+
     policy = dict()
     uniques = set(observedstates.keys())
     songs= []
@@ -76,10 +89,12 @@ def Main(startstates, observedstates, TOTALSONGSTOMONTECARLO = 1):
     while len(songs) < TOTALSONGSTOMONTECARLO:
         start, event, node = initializetrajectory(startstates)
         try:
-            terminal = RecursiveSearchForEnd(node,event)
+            terminal = BestFirstSearch()
+            #terminal = RecursiveSearchForEnd(node,event)
             if terminal is not None:
                 songs.append((start,terminal))
-                incorporateSongIntoPolicyAndMonteFeature(terminal, policy, montefeatures)
+                feats = incorporateSongIntoPolicyAndMonteFeature(terminal, policy)
+                discountedaccumulations = discount_and_accumulate_ordered_feature_vector_list(feats)
         except RuntimeError:
             print('stack overflow')
             overflownstax += 1

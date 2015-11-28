@@ -14,37 +14,44 @@ import math
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 import numpy as np
-import utilz
+from utilz import *
 featurevectors = pickle.load(open('featurevectors.pkl','rb'))
-
+print('compressing to [1500 X 12]\n')
 X = np.array([feature.vector for feature in featurevectors])
-pca = PCA(copy=True, n_components=20, whiten=True)
-X_red = pca.fit_transform(X)
+pca = PCA(copy=True, n_components=12, whiten=True)
 
-print('x_red shape: \n' + str(np.array(X_red).shape))
-print('x shape: \n' + str(np.array(X).shape))
-print('x sum: \n' + str(np.sum(X)))
-print('x avg: \n' + str(np.average(X)))
-trans = np.array(pca.transform(X[0]))[0]
-print('x[0] red: \n' + str(trans))
-print('x[0]: \n')
-printOnes(np.array(X[0]))
-revert = pca.inverse_transform(trans)
-revert = utilz.IntegerizeArray(revert)
-print('x[0] reverted: \n')
-printOnes(revert)
+#featurecounter = Counter([feature.vector for feature in features])
+#drivel = set([i[0] for i in featurecounter.most_common(128)])
 
-FeatureClustr = KMeans(n_clusters=2500)
-FeatureClustr.fit(X)
+print('fitting pca.. current time is: ' + str(datetime.datetime.now().time()))
+pca.fit(X)
 
-TransformedFeatures = dict()
-for feat in featurevectors:
-    trans_feat = FeatureClustr.transform(pca.transform(feat.vector))
-    if trans_feat not in TransformedFeatures:
-        TransformedFeatures[trans_feat] = Counter()
-    TransformedFeatures[trans_feat][feat.actiongenerated] += 1
-with open('TransformedFeatures.pkl', 'wb') as output:
-    pickle.dump(TransformedFeatures, output, -1)
+print('tranforming the states.. current time is: ' + str(datetime.datetime.now().time()))
+RX_red = pca.transform([x for x in X if x[0]==1])
+NX_red = pca.transform([x for x in X if x[0]!=1])
+
+with open('pca12.pkl', 'wb') as output:
+    pickle.dump(pca, output, -1)
+
+RFeatureClustr = KMeans(n_clusters=300)
+NFeatureClustr = KMeans(n_clusters=1200)
+
+print('fitting rest clusters.. current time is: ' + str(datetime.datetime.now().time()))
+RFeatureClustr.fit(RX_red)
+with open('RFeatureClustr300.pkl', 'wb') as output:
+    pickle.dump(RFeatureClustr, output, -1)
+
+print('fitting note clusters.. current time is: ' + str(datetime.datetime.now().time()))
+NFeatureClustr.fit(NX_red)
+
+print('finished.. current time is: ' + str(datetime.datetime.now().time()))
+
+
+with open('NFeatureClustr1200.pkl', 'wb') as output:
+    pickle.dump(NFeatureClustr, output, -1)
+
+#TranformedFeatureActionPairs(featurevectors,dim_red=pca.transform)
+
 
 
 

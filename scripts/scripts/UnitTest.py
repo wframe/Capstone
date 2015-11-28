@@ -1,16 +1,5 @@
-try:
-    import cPickle as pickle
-except:
-    import pickle
-
-from SongData import *
-from SongData import SongData
-import GenerateRandomPolicy as grp
-import random
-import copy
-from collections import Counter
-import midi
-import math
+﻿
+from utilz import *
 class MDP:
     """A Markov Decision Process, defined by an initial state, transition model,
     and reward function. We also keep track of a gamma value, for use by
@@ -99,21 +88,12 @@ class MelodyMDP(MDP):
             total = sum([ observedstates[state.feature][action] for action in observedstates[state.feature].keys() ])
             return [ [float(count) / total, nextstate(state, action)] for action in observedstates[state.feature].keys() ]
 
-def empiricalestimate(songs):
-    expectations =np.array((len(songs[0].featurevectors[0].vector))*(0,))
-    for song in songs:
-        expectations = np.add(expectations,get_song_discounted_feature_expectations(song))
-    expectations /= len(songs)
-    return expectations
-def get_song_discounted_feature_expectations(song, gamma = 0.9):
-    expectations =np.array((len(song.featurevectors[0].vector))*(0,))
-    for timestep,feature in enumerate(song.featurevectors):
-        expectations = np.add(expectations,math.pow(gamma,timestep)*np.array(feature))
 def value_iteration(mdp, epsilon = 0.001, MAXINNERITERATIONS = 100000):
     """Solving an MDP by value iteration. [Fig. 17.4]"""
     new_utilities = dict([ (f, 0) for f in mdp.observedstates.keys() ])
     R, T, gamma = mdp.R, mdp.T, mdp.gamma
     start, event, node = grp.initializetrajectory(mdp.startstates)
+    actualsong = [song for song in songs if song.filename ==start.filename][0]
     while True:
         print 'OUTER LOOP OF VALUE ITERATION--'
         old_utilities = copy.deepcopy(new_utilities)
@@ -167,9 +147,9 @@ def expected_utility(a, s, U, mdp):
     """The expected utility of doing a in state s, according to the MDP and U."""
     return sum([ p * U[s1] for p, s1 in mdp.T(s, a) ])
 
-def ApprenticeshipTest(featurevectors,startstates,extendedstates,finalstates,featureexpectations,songs,espilon=.001):
-    MuEMPIRICAL = (np.around(a=np.average([vec.vector for vec in featurevectors], axis=0),decimals=4))
-    MuMONTE_1, MuMONTE_2 = featureexpectations, None
+def ApprenticeshipTest(featurevectors,startstates,extendedstates,finalstates,monteexpectations,songs,espilon=.001):
+    MuEMPIRICAL = empiricalestimate(songs)
+    MuMONTE_1, MuMONTE_2 = monteexpectations, None
     MuHAT_1, MuHAT_2, w, t = None, None, None, None 
     i = 0
     while(True):
@@ -186,17 +166,16 @@ def ApprenticeshipTest(featurevectors,startstates,extendedstates,finalstates,fea
             MuHAT_1 = np.array(MuHAT_2) + scale*(numerator/denominator)
             w = np.array(MuEMPIRICAL) - np.array(MuHAT_1)
             t = norm(w,2)
-        mdp = vi.MelodyMDP(startstates, w, finalstates, extendedstates,songs)
-        Pi_1 = vi.value_iteration(mdp)
+        mdp = MelodyMDP(startstates, w, finalstates, extendedstates,songs)
+        Pi_1 = value_iteration(mdp)
         MuMONTE_1 = grp.Main(startstates,Pi_1,TOTALSONGSTOMONTECARLO=200)
 if __name__ == '__main__':
-    #featurevectors = pickle.load(open('featurevectors.pkl','rb'))
-    #startstates = pickle.load(open('startstates.pkl','rb'))
-    #extendedstates = pickle.load(open('extendedstates.pkl','rb'))
-    #observedstates = pickle.load(open('observedstates.pkl','rb'))
-    #finalstates = pickle.load(open('finalstates.pkl','rb'))
+    featurevectors = pickle.load(open('featurevectors.pkl','rb'))
+    startstates = pickle.load(open('startstates.pkl','rb'))
+    extendedstates = pickle.load(open('extendedstates.pkl','rb'))
+    observedstates = pickle.load(open('observedstates.pkl','rb'))
+    finalstates = pickle.load(open('finalstates.pkl','rb'))
     songs = pickle.load(open('songs.pkl','rb'))
-    #featureexpectations = pickle.load(open('monteexpectations.pkl','rb'))
+    monteexpectations = pickle.load(open('monteexpectations.pkl','rb'))
 
-    empiricalestimate(songs)
-    ApprenticeshipTest(featurevectors,startstates,extendedstates,finalstates,featureexpectations,songs)
+    ApprenticeshipTest(featurevectors,startstates,extendedstates,finalstates,monte,songs)

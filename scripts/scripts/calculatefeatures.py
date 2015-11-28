@@ -39,23 +39,27 @@ def Main():
     for filename in valid_filenames:
         #try:  
             #folder = os.path.join('midi','midi','melodies','noChords')
-        song_path = os.path.join(folder, filename)
+
+        elistfile = open('excludelist.txt', 'r')
+        excludelist = elistfile.read().splitlines()
+        if filename not in excludelist:
+            song_path = os.path.join(folder, filename)
         
-        pattern = midi.read_midifile(song_path)
-        song = SongData(pattern, filename)
-        startstates.append(song.startstate)
-        uniquestartstates.add((song.startstate.beat,song.startstate.pitch%12))
-        for idx,feature in enumerate(song.featurevectors):
-            if len(feature.vector) != 103:
-                print(str(filename) + " had malformed vector")
-                print("vector at index " + str(idx))
-            if feature.vector not in observedstates:
-                observedstates[feature.vector] = Counter()
-            observedstates[feature.vector][feature.actiongenerated] += 1
-            featurevectors.append(feature)
-        if len(song.featurevectors) > 0:
-            finalstates.add(song.featurevectors[len(song.featurevectors)-1])
-        songs.append(song)
+            pattern = midi.read_midifile(song_path)
+            song = SongData(pattern, filename)
+            startstates.append(song.startstate)
+            uniquestartstates.add((song.startstate.beat,song.startstate.pitch%12))
+            for idx,feature in enumerate(song.featurevectors):
+                if len(feature.vector) != 103:
+                    print(str(filename) + " had malformed vector")
+                    print("vector at index " + str(idx))
+                if feature.vector not in observedstates:
+                    observedstates[feature.vector] = Counter()
+                observedstates[feature.vector][feature.actiongenerated] += 1
+                featurevectors.append(feature)
+            if len(song.featurevectors) > 0:
+                finalstates.add(song.featurevectors[len(song.featurevectors)-1])
+            songs.append(song)
 
     #except Exception as e:
         #	import traceback, os.path

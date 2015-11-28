@@ -34,7 +34,7 @@ class FeatureVector(object):
          self.vector = vector
          self.actiongenerated = actiongenerated
 class SongContextState(object):
-    def __init__(self,currentBarNumber,currentlyHeldNote, beat):
+    def __init__(self,currentlyHeldNote,beat):
         self.songPitchMap = PitchMap()
         self.barPitchMap = PitchMap()
         self.updownsame = ['null']*SongData.TRAJECTORYHISTORYSPAN
@@ -75,7 +75,9 @@ class Node(object):
         print('\t\tbeat index: ' + str(self.context.currentBeatIndex))
 
     def __cmp__(self, other):
-        return cmp(self.utility, other.intAttribute)
+        if self.utility is not None:
+            return cmp(self.utility, other.intAttribute)
+
 def drawStart(startstates):
     return startstates[random.randint(0,len(startstates)-1)]
 
@@ -117,11 +119,6 @@ def sexuallyGenerateProspects(observedstates):
     daddyProspects = copy.deepcopy(observedstates[daddy])
     return averageProspects(mommyProspects,daddyProspects)
 
-def getOnes(vec):
-    return [idx for idx, elem in enumerate(vec) if elem==1]
-
-def printOnes(vec):
-    print('ONES: '+str(getOnes(vec)))
 
 def constructFeature(context):	
     songPitchMode = context.songPitchMap.getPitchMax(SongData.REST)
@@ -221,7 +218,7 @@ class SongData(object):
     HINOTE = 84
 
     BEATS_PER_BAR = 32
-    MAXHOLDBARS = 2
+    MAXHOLDBARS = 4
 
     TRAJECTORYHISTORYSPAN = 8
 
@@ -350,7 +347,7 @@ class SongData(object):
         positionInCurrentBar = 0
 
         startpitch = self.startstate.pitch
-        context = SongContextState(0, startpitch, startindex)
+        context = SongContextState(startpitch, startindex)
         startaction = self.findnextevent(startindex,context.songPitchMap.getPitchMax(SongData.REST))
         self.startstate = StartState(startpitch, startindex, startaction, filename)
         #feature vectors
@@ -437,14 +434,14 @@ class SongData(object):
                     udsTuple +=(1,0,0,0,0)
                 elif i == 'd':					#moved down from previous
                     udsTuple +=(0,1,0,0,0)
-                elif i == 's':					#moved down from previous
+                elif i == 's':					#was same as previous
                     udsTuple +=(0,0,1,0,0)
                 else:
                     udsTuple +=(0,0,0)
                     if 'p' in i:				#previous was a rest
                         udsTuple +=(1,)
                     else:
-                        udsTuple +=(0,)			#previous was a rest
+                        udsTuple +=(0,)			#previous wasn't a rest
                     if 'c' in i: 
                         udsTuple +=(1,)			#current is a rest
                     else:
