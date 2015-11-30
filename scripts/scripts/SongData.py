@@ -30,7 +30,9 @@ class SongContextState(object):
         self.currentlyHeldNote = currentlyHeldNote
         self.songPitchMap.upsertPitch(currentlyHeldNote)
         self.barPitchMap.upsertPitch(currentlyHeldNote)
+        self.isHold = False
     def update(self,newevent):
+        self.isHold |= newevent == SongData.HOLD
         self.currentBeatIndex+=1
         tonalcenter = self.songPitchMap.getPitchMax(SongData.REST)
         actiongenerated = SongData.findaction(newevent,tonalcenter)
@@ -122,7 +124,7 @@ def constructFeature(context):
     featureUDSTuple = SongData.getUDSTuple(context.updownsame)
     featureBarMod = SongData.getBarModTuple((context.currentBeatIndex/SongData.BEATS_PER_BAR)+1)	 
     innerPos = interiorOctile(context.currentBeatIndex)
-    feature = featureSongPitchTuple + featureBarPitchTuple + featureUDSTuple + featureBarMod + innerPos + ((context.currentBeatIndex%2),)
+    feature = featureSongPitchTuple + featureBarPitchTuple + featureUDSTuple + featureBarMod + innerPos + ((context.currentBeatIndex%2),) + (int(context.isHold),)
     return feature
 def interiorOctile(beat):
     intOct = (beat%SongData.BEATS_PER_BAR) / 4

@@ -25,11 +25,12 @@ from collections import OrderedDict
 
 
 def DimReducer(X, transformers):
-    '''X is an array like and transformers is an ordered list of functions,
-    where the first element accepts an array the shape of and where all subsequent elements accept as their sole input an array like object the same shape as is output by their predecessor
+    '''X is an array_like and transformers is an ordered list of functions,
+    where the first element accepts an array_like the shape of X and where all subsequent elements accept as their sole input an array_like object the same shape as is output by their predecessor
     '''
     for transform in transformers:
-        X = transform(X)
+        X = transform(np.asarray([X]))
+
     return X
 def get_cmodels():
     Ncluster = pickle.load(open(ncluster_pickle_string,'rb'))
@@ -70,25 +71,26 @@ def ConstructTransformedFeatureActionMap():
 def IntegerizeArray(arr):
     return np.array(np.around(arr,decimals=0),dtype='int32')
 
-def empiricalestimate(songs):
+def empiricalestimate(songs,pca):
     from SongData import SongData
-    accumulatations =np.array((len(songs[0].featurevectors[0].vector))*(0,))
+    accumulatations = [0]
     for song in songs:
-        accumulatations = np.add(accumulatations,get_song_discounted_feature_expectations(song))
+        accumulatations = np.add(accumulatations,get_song_discounted_feature_expectations(song,pca))
     expectations = accumulatations/len(songs)
     return expectations
 
-def get_song_discounted_feature_expectations(song, gamma = 0.9):
+def get_song_discounted_feature_expectations(song,pca, gamma = 0.9):
     from SongData import SongData
-    accumulatations =np.array((len(song.featurevectors[0].vector))*(0,))
+    accumulatations = [0]
     for timestep,feature in enumerate(song.featurevectors):
-        accumulatations = np.add(accumulatations,math.pow(gamma,timestep)*np.array(feature.vector))
+        vector = pca.transform(feature.vector)
+        accumulatations = np.add(accumulatations,math.pow(gamma,timestep)*np.array(vector))
     return accumulatations
 
 def discount_and_accumulate_ordered_feature_list(olist, gamma = 0.9):
-    accumulatations =np.array((len(olist[0].vector))*(0,))
-    for timestep,feature in enumerate(olist):
-        accumulatations = np.add(accumulatations,math.pow(gamma,timestep)*np.array(feature.vector))
+    accumulatations =[0]
+    for timestep,vector in enumerate(olist):
+        accumulatations = np.add(accumulatations,math.pow(gamma,timestep)*np.array(vector))
     return accumulatations
 
 def getOnes(vec):

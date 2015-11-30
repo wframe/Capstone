@@ -15,7 +15,7 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 import numpy as np
 from utilz import *
-featurevectors = pickle.load(open('featurevectors.pkl','rb'))
+featurevectors = pickle.load(open(outputmodelname+featurevectorlist_pickle_string,'rb'))
 print('compressing to [1500 X 12]\n')
 X = np.array([feature.vector for feature in featurevectors])
 pca = PCA(copy=True, n_components=12, whiten=True)
@@ -30,7 +30,7 @@ print('tranforming the states.. current time is: ' + str(datetime.datetime.now()
 RX_red = pca.transform([x for x in X if x[0]==1])
 NX_red = pca.transform([x for x in X if x[0]!=1])
 
-with open('pca12.pkl', 'wb') as output:
+with open(outputmodelname+'pca12.pkl', 'wb') as output:
     pickle.dump(pca, output, -1)
 
 RFeatureClustr = KMeans(n_clusters=300)
@@ -38,7 +38,7 @@ NFeatureClustr = KMeans(n_clusters=1200)
 
 print('fitting rest clusters.. current time is: ' + str(datetime.datetime.now().time()))
 RFeatureClustr.fit(RX_red)
-with open('RFeatureClustr300.pkl', 'wb') as output:
+with open(outputmodelname+'RFeatureClustr300.pkl', 'wb') as output:
     pickle.dump(RFeatureClustr, output, -1)
 
 print('fitting note clusters.. current time is: ' + str(datetime.datetime.now().time()))
@@ -47,7 +47,7 @@ NFeatureClustr.fit(NX_red)
 print('finished.. current time is: ' + str(datetime.datetime.now().time()))
 
 
-with open('NFeatureClustr1200.pkl', 'wb') as output:
+with open(outputmodelname+'NFeatureClustr1200.pkl', 'wb') as output:
     pickle.dump(NFeatureClustr, output, -1)
 
 #TranformedFeatureActionPairs(featurevectors,dim_red=pca.transform)

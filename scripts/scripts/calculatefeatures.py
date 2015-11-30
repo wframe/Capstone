@@ -1,14 +1,4 @@
-﻿#from __future__ import division
-try:
-   import cPickle as pickle
-except:
-   import pickle
-import midi
-import os.path
-import os
-from operator import itemgetter
-from collections import OrderedDict, Counter
-import numpy as  np
+﻿from utilz import *
 from SongData import SongData, FeatureVector, StartState
 import routes 
 
@@ -50,7 +40,7 @@ def Main():
             startstates.append(song.startstate)
             uniquestartstates.add((song.startstate.beat,song.startstate.pitch%12))
             for idx,feature in enumerate(song.featurevectors):
-                if len(feature.vector) != 103:
+                if len(feature.vector) != 104:
                     print(str(filename) + " had malformed vector")
                     print("vector at index " + str(idx))
                 if feature.vector not in observedstates:
@@ -72,17 +62,17 @@ def Main():
 
     X = np.array([feature.vector for feature in featurevectors],dtype=bool)
 
-    with open('songs.pkl', 'wb') as output:
+    with open(outputmodelname+'songs.pkl', 'wb') as output:
     	pickle.dump(songs, output, -1)
-    with open('featurevectors.pkl', 'wb') as output:
+    with open(outputmodelname+featurevectorlist_pickle_string, 'wb') as output:
     	pickle.dump(featurevectors, output, -1)
-    with open('observedstates.pkl', 'wb') as output:
+    with open(outputmodelname+'observedstates.pkl', 'wb') as output:
     	pickle.dump(observedstates, output, -1)
-    with open('startstates.pkl', 'wb') as output:
+    with open(outputmodelname+'startstates.pkl', 'wb') as output:
     	pickle.dump(startstates, output, -1)
-    with open('finalstates.pkl', 'wb') as output:
+    with open(outputmodelname+'finalstates.pkl', 'wb') as output:
     	pickle.dump(finalstates, output, -1)
-    with open('X.pkl', 'wb') as output:
+    with open(outputmodelname+'X.pkl', 'wb') as output:
     	pickle.dump(X, output, -1)
 
 if __name__ == "__main__":

@@ -42,5 +42,5 @@ if __name__ == '__main__':
     extendedstates = pickle.load(open('extendedstates.pkl','rb'))
     observedstates = pickle.load(open('observedstates.pkl','rb'))
     finalstates = pickle.load(open('finalstates.pkl','rb'))
-    featureexpectations = pickle.load(open('monteexpectations.pkl','rb'))
+    featureexpectations = pickle.load(open('pricedsums.pkl','rb'))
     Apprenticeship(featurevectors,startstates,extendedstates,finalstates,featureexpectations)

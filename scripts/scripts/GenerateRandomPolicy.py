@@ -12,17 +12,12 @@ def initializetrajectory(startstates):
     node.display()
     return start, event, node
 
-def incorporateSongIntoPolicyAndMonteFeature(node, policy):		
+def recoverShrunkenFeatures(node, pca):		
     features = []	    
     while node is not None and type(node) is not StartState:
         parent = node.parent
-        features.append(node.feature)
-        if node.feature not in policy:
-            c = Counter()
-            c[node.actiongenerated] = 1
-            policy[node.feature] = c
-        else:
-            policy[node.feature][node.actiongenerated] += 1
+        feature = pca.transform(node.feature.vector)
+        features.append(feature)
         node = parent
     return list(reversed(features))
 
@@ -55,24 +50,25 @@ def RecursiveSearchForEnd(node,newevent):
 
         if lastscion is not None and lastscion.actiongenerated == SongData.END:	
             return lastscion
-
-def GenerateSongEvents(firstnode,firstevent,tfam,pca,cmodels):
-    def updateNodeAndFeature(node,event,tfam):
+def updateNodeAndFeature(node,event,tfam,pca,cmodels):
         context = copy.deepcopy(node.context)   
         context.update(event)
         node.context = context
         node.feature = context.feature
         node.transformFeatureAttributes(tfam, pca, cmodels)
-    updateNodeAndFeature(firstnode,firstevent,tfam) 
+def GenerateSongEvents(firstnode,firstevent,tfam,pca,cmodels):
+
+    updateNodeAndFeature(firstnode,firstevent,tfam,pca,cmodels) 
 
     parent = firstnode
     eventnumber = 1
     while True:
         eventnumber+=1
-        print('event number: ' + str(eventnumber))
+
         action = parent.actiongenerated = drawActionNoRep(parent.transformedprospects)  
         
         if action is SongData.END:
+            print('events: ' + str(eventnumber))
             return parent
                      
         event = findevent(action, parent.context.songPitchMap.getPitchMax(SongData.REST))
@@ -95,14 +91,14 @@ def Main(startstates, features, tfam,pca, cmodels, TOTALSONGSTOMONTECARLO = 1):
     #arbitrary 0 vector for broadcast
     accumulations = [0]
     while len(songs) < TOTALSONGSTOMONTECARLO:
-        print('generating song number:' + str(len(songs)+1))
+        print('total songs:' + str(len(songs)+1))
         start, event, node = initializetrajectory(startstates)
         try:
             terminal =GenerateSongEvents(node,event,tfam,pca,cmodels)
             #terminal = RecursiveSearchForEnd(node,event)
             if terminal is not None:
                 songs.append((start,terminal))
-                feats = incorporateSongIntoPolicyAndMonteFeature(terminal, policy)
+                feats = recoverShrunkenFeatures(terminal, pca)
                 accumulations += discount_and_accumulate_ordered_feature_list(feats)
         except RuntimeError:
             print('stack overflow')
@@ -203,7 +199,7 @@ if __name__ == '__main__':
     tfam  = pickle.load(open('tfam.pkl','rb'))
     pca = pickle.load(open(pca_pickle_string,'rb'))
     cmodels = get_cmodels()
-    Main(startstates, featurevectors, tfam,pca, cmodels, TOTALSONGSTOMONTECARLO = 200)
+    Main(startstates, featurevectors, tfam,pca, cmodels, TOTALSONGSTOMONTECARLO = 250)
     #originalstatelength = len(observedstates.keys())
 
     #featureexpectations = Main(startstates,observedstates,TOTALSONGSTOMONTECARLO=200)

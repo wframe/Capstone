@@ -33,12 +33,11 @@ class MDP:
 
 class MelodyMDP(MDP):
 
-    def __init__(self, startstates, rewards, terminals, observedstates, gamma = 0.9):
+    def __init__(self, startstates, rewards,  tfam, gamma = 0.9):
         self.startstates = startstates
-        self.terminals = terminals
         self.gamma = gamma
         self.rewards = rewards
-        self.observedstates = observedstates
+        self.tfam = tfam
         self.frontier = []
         self.encounteredstates = dict()
 
@@ -71,64 +70,71 @@ class MelodyMDP(MDP):
                 context.update(newevent)
                 candidate = Node(context, None, node, None, None)
                 candidate.feature = context.feature.vector
-                if candidate.feature in self.observedstates:
+                if candidate.feature in self.tfam:
                     encountered_children[action][candidate.feature] += 1
                     if not encountered or candidate.feature not in encountered_children[action]:
-                        candidate.prospects = copy.deepcopy(self.observedstates[candidate.feature])
+                        candidate.prospects = copy.deepcopy(self.tfam[candidate.feature])
                         candidate.generatedbyaction = action
                         children.append(candidate)
 
         self.frontier += children
         return children
 
-    def actions(self, feature):
-        if state in self.terminals:
-            return [None]
-        else:
-            total = sum([ observedstates[state.feature][action] for action in observedstates[state.feature].keys() ])
-            return [ [float(count) / total, nextstate(state, action)] for action in observedstates[state.feature].keys() ]
+    def evaluteFrontier(self,node,tfam,pca,cmodels):
+        from SongData import SongData, findevent
+        from GenerateRandomPolicy import updateNodeAndFeature
+        terminus = None
+        candidates = []
+        prospects =copy.deepcopy(node.transformedprospects)
+        for action in prospects.keys():
+            candidate = copy.deepcopy(node)
+            candidate.generatedbyaction = action
+            if action != SongData.END:
+                event = findevent(action, candidate.context.songPitchMap.getPitchMax(SongData.REST))            
+                updateNodeAndFeature(candidate,event,tfam,pca,cmodels)
+            else:
+                terminus = candidate
+            candidates.append(candidate)        
+        candidaterewards = [self.R(pca.transform(feature.vector)) for c in candidates]
+        maxindex = np.argmax(candidaterewards)
+        reward = candidaterewards[maxindex]
+        argcand = candidates[maxindex]
+        if terminus != None:
+            total_prospects = sum([prospects[pro] for pro in prospects])
+            if np.random.uniform(0,1) < float(prospects[SongData.END])/total_prospects:
+                reward, argcand = 0, terminus
+        return reward, argcand
+    #def actions(self, feature):
+    #    if state in self.terminals:
+    #        return [None]
+    #    else:
+    #        total = sum([ tfam[state.feature][action] for action in tfam[state.feature].keys() ])
+    #        return [ [float(count) / total, nextstate(state, action)] for action in tfam[state.feature].keys() ]
 
-def value_iteration(mdp, epsilon = 0.001, MAXINNERITERATIONS = 100000):
+def value_iteration(mdp, tfam,pca,cmodels,epsilon = 0.001, MAXINNERITERATIONS = 100000):
+    from GenerateRandomPolicy import updateNodeAndFeature, initializetrajectory
+    from SongData import SongData
     """Solving an MDP by value iteration. [Fig. 17.4]"""
-    new_utilities = dict([ (f, 0) for f in mdp.observedstates.keys() ])
-    R, T, gamma = mdp.R, mdp.T, mdp.gamma
-    start, event, node = grp.initializetrajectory(mdp.startstates)
-    actualsong = [song for song in songs if song.filename ==start.filename][0]
+    new_utilities = dict()
+    new_utilities[0]= dict() 
+    new_utilities[1] = dict()
+
+    R, gamma = mdp.R,  mdp.gamma
+    start, event, parent = initializetrajectory(mdp.startstates)
+    updateNodeAndFeature(parent,event,tfam,pca,cmodels) 
     while True:
         print 'OUTER LOOP OF VALUE ITERATION--'
         old_utilities = copy.deepcopy(new_utilities)
-
         delta = 0
-        node.context.update(event)
-        node.feature = node.context.feature.vector
-        node.prospects = copy.deepcopy(mdp.observedstates[node.feature])
-        mdp.frontier = []
-        mdp.encounteredstates = dict()
-        mdp.frontier.append(node)
-        i = 0
-        updates = 0
-        deltasum = 0
-        for s in mdp.frontier:
-            i += 1
-            if i > MAXINNERITERATIONS:
-                break
-            children = mdp.spawn(s)
-            if len(children) > 0:
-                updates += 1
-                ev_list = []
-                for a in node.prospects.keys():
-
-                    action_ev = 0
-                    ret = T(s.feature, a)
-                    if ret is not None:
-                        for t in ret:
-                            p, childfeature = t
-                            action_ev += p * old_utilities[childfeature]
-
-                    ev_list.append(action_ev)
-
-                new_utilities[s.feature] = R(s.feature) + gamma * max(ev_list)
-                delta = max(delta, abs(new_utilities[s.feature] - old_utilities[s.feature]))
+        while parent.generatedbyaction != SongData.END:
+            maximum_value_action, child = mdp.evaluteFrontier(parent,tfam,pca,cmodels)       
+            parity = parent.feature.vector[0]
+            tfeat = parent.transformedfeature
+            new_utilities[parity][parent.transformedfeature] = R(tfeat) + gamma * maximum_value_action
+            delta = max(delta, abs(new_utilities[parity][tfeat] - old_utilities[parity][tfeat] ))
+            parent = child
+        if delta < epsilon * (1 - gamma) / gamma:
+             return old_utilities
 
         print '\tmax delta: ' + str(delta)
 
@@ -147,9 +153,9 @@ def expected_utility(a, s, U, mdp):
     """The expected utility of doing a in state s, according to the MDP and U."""
     return sum([ p * U[s1] for p, s1 in mdp.T(s, a) ])
 
-def ApprenticeshipTest(featurevectors,startstates,extendedstates,finalstates,monteexpectations,songs,espilon=.001):
-    MuEMPIRICAL = empiricalestimate(songs)
-    MuMONTE_1, MuMONTE_2 = monteexpectations, None
+def ApprenticeshipTest(featurevectors,startstates,pricedsums,tfam,songs,pca,cmodels,espilon=.001):
+    MuEMPIRICAL = empiricalestimate(songs,pca)
+    MuMONTE_1, MuMONTE_2 = pricedsums, None
     MuHAT_1, MuHAT_2, w, t = None, None, None, None 
     i = 0
     while(True):
@@ -166,8 +172,8 @@ def ApprenticeshipTest(featurevectors,startstates,extendedstates,finalstates,mon
             MuHAT_1 = np.array(MuHAT_2) + scale*(numerator/denominator)
             w = np.array(MuEMPIRICAL) - np.array(MuHAT_1)
             t = norm(w,2)
-        mdp = MelodyMDP(startstates, w, finalstates, extendedstates,songs)
-        Pi_1 = value_iteration(mdp)
+        mdp = MelodyMDP(startstates, w, tfam)
+        Pi_1 = value_iteration(mdp, tfam,pca,cmodels)
         MuMONTE_1 = grp.Main(startstates,Pi_1,TOTALSONGSTOMONTECARLO=200)
 if __name__ == '__main__':
     featurevectors = pickle.load(open('featurevectors.pkl','rb'))
@@ -176,6 +182,9 @@ if __name__ == '__main__':
     observedstates = pickle.load(open('observedstates.pkl','rb'))
     finalstates = pickle.load(open('finalstates.pkl','rb'))
     songs = pickle.load(open('songs.pkl','rb'))
-    monteexpectations = pickle.load(open('monteexpectations.pkl','rb'))
+    pricedsums = pickle.load(open('pricedsums.pkl','rb'))
 
-    ApprenticeshipTest(featurevectors,startstates,extendedstates,finalstates,monte,songs)
+    tfam= pickle.load(open('tfam.pkl','rb'))
+    pca = pickle.load(open(pca_pickle_string,'rb'))
+    clusters = [pickle.load(open(ncluster_pickle_string,'rb')),pickle.load(open(rcluster_pickle_string,'rb'))]
+    ApprenticeshipTest(featurevectors,startstates,pricedsums,tfam,songs,pca,clusters)
