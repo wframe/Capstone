@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.30723.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "Capstone", "Capstone.pyproj", "{62C6768A-8A8E-4568-9839-391107749A1B}"
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "Capstone", "Capstone.pyproj", "{4420C9A7-32CA-4A43-8862-5D2C11B76382}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,8 +11,8 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{62C6768A-8A8E-4568-9839-391107749A1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{62C6768A-8A8E-4568-9839-391107749A1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4420C9A7-32CA-4A43-8862-5D2C11B76382}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4420C9A7-32CA-4A43-8862-5D2C11B76382}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

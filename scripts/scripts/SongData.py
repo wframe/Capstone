@@ -1,16 +1,4 @@
-﻿#from __future__ import division
-try:
-   import cPickle as pickle
-except:
-   import pickle
-import midi
-import os.path
-import random
-import copy
-import os
-from operator import itemgetter
-from collections import OrderedDict
-import numpy as  np
+﻿from utilz import *
 
 class StartState(object):
     def __init__(self, pitch,beatindex, actiongenerated, filename):
@@ -61,6 +49,7 @@ class Node(object):
     def __init__(self, context, feature, parent, prospects, action,utility=None):
         self.feature = feature
         self.prospects = prospects
+        self.feature = feature
         self.canonicalprospects = prospects
         self.context = context
         self.parent = parent
@@ -68,6 +57,11 @@ class Node(object):
         self.generatedbyaction = None
         self.isMutant = False
         self.utility = utility
+
+    def transformFeatureAttributes(self,tfam, pca, cmodels):
+        vector = self.feature.vector
+        self.transformedfeature = DimReducer(vector,[pca.transform,clustermodelheuristic(vector,cmodels).predict])[0]
+        self.transformedprospects =  copy.deepcopy(tfam[vector[0]][self.transformedfeature])
     def display(self):
         print('\tNODE: ')
         print('\t\tfeature' + str(self.feature)) 

@@ -1,16 +1,4 @@
-﻿try:
-   import cPickle as pickle
-except:
-    import pickle 
-from SongData import *
-from SongData import SongData
-import random 
-import copy
-from collections import Counter
-import midi
-import uuid
-import heapq
-from utilz import *
+﻿from SongData import *
 def initializetrajectory(startstates):
     start = drawStart(startstates)
     startbeat = start.beat			
@@ -68,17 +56,35 @@ def RecursiveSearchForEnd(node,newevent):
         if lastscion is not None and lastscion.actiongenerated == SongData.END:	
             return lastscion
 
-def BestFirstSearch(firstnode,firstevent):
-    def updateNodeAndFeature(node,feature):
+def GenerateSongEvents(firstnode,firstevent,tfam,pca,cmodels):
+    def updateNodeAndFeature(node,event,tfam):
         context = copy.deepcopy(node.context)   
-        context.update(newevent)
+        context.update(event)
         node.context = context
         node.feature = context.feature
-    updateNodeAndFeature(firstnode,firstevent)
-    node.prospects = copy.deepcopy(observedstates[node.feature])    
+        node.transformFeatureAttributes(tfam, pca, cmodels)
+    updateNodeAndFeature(firstnode,firstevent,tfam) 
+
+    parent = firstnode
+    eventnumber = 1
+    while True:
+        eventnumber+=1
+        print('event number: ' + str(eventnumber))
+        action = parent.actiongenerated = drawActionNoRep(parent.transformedprospects)  
+        
+        if action is SongData.END:
+            return parent
+                     
+        event = findevent(action, parent.context.songPitchMap.getPitchMax(SongData.REST))
+
+        child =  Node(parent.context, None, parent, None, None)
+        updateNodeAndFeature(child,event,tfam)
+        parent = child
+         
 
 
-def Main(startstates, observedstates, TOTALSONGSTOMONTECARLO = 1):
+
+def Main(startstates, features, tfam,pca, cmodels, TOTALSONGSTOMONTECARLO = 1):
 
     newlygeneratedstates = dict()
 
@@ -86,18 +92,23 @@ def Main(startstates, observedstates, TOTALSONGSTOMONTECARLO = 1):
     uniques = set(observedstates.keys())
     songs= []
     overflownstax = 0
+    #arbitrary 0 vector for broadcast
+    accumulations = [0]
     while len(songs) < TOTALSONGSTOMONTECARLO:
+        print('generating song number:' + str(len(songs)+1))
         start, event, node = initializetrajectory(startstates)
         try:
-            terminal = BestFirstSearch()
+            terminal =GenerateSongEvents(node,event,tfam,pca,cmodels)
             #terminal = RecursiveSearchForEnd(node,event)
             if terminal is not None:
                 songs.append((start,terminal))
                 feats = incorporateSongIntoPolicyAndMonteFeature(terminal, policy)
-                discountedaccumulations = discount_and_accumulate_ordered_feature_vector_list(feats)
+                accumulations += discount_and_accumulate_ordered_feature_list(feats)
         except RuntimeError:
             print('stack overflow')
             overflownstax += 1
+    with open('pricedsums.pkl', 'wb') as output:
+        pickle.dump(accumulations/TOTALSONGSTOMONTECARLO, output, -1)   
     print("overflownstax: " + str(overflownstax))
 
     def convertTrajectoryToMidi(songEnds):
@@ -181,7 +192,7 @@ def Main(startstates, observedstates, TOTALSONGSTOMONTECARLO = 1):
     for idx,songEnds in enumerate(songs):
         convertTrajectoryToMidi(songEnds)
     
-    return np.average(montefeatures, axis=0)
+
 
 if __name__ == '__main__':
     featurevectors = pickle.load(open('featurevectors.pkl','rb'))
@@ -189,17 +200,21 @@ if __name__ == '__main__':
     startstates = pickle.load(open('startstates.pkl','rb'))
     observedstates = pickle.load(open('observedstates.pkl','rb'))
 
-    originalstatelength = len(observedstates.keys())
+    tfam  = pickle.load(open('tfam.pkl','rb'))
+    pca = pickle.load(open(pca_pickle_string,'rb'))
+    cmodels = get_cmodels()
+    Main(startstates, featurevectors, tfam,pca, cmodels, TOTALSONGSTOMONTECARLO = 200)
+    #originalstatelength = len(observedstates.keys())
 
-    featureexpectations = Main(startstates,observedstates,TOTALSONGSTOMONTECARLO=200)
-    print("monte expectations: \n" + str(featureexpectations))
-    print("observed expectations: \n" + str(np.around(a=np.average([vec.vector for vec in featurevectors], axis=0),decimals=4)))
-    montepickle = open('monteexpectations.pkl', 'wb')
-    pickle.dump(featureexpectations, montepickle)
+    #featureexpectations = Main(startstates,observedstates,TOTALSONGSTOMONTECARLO=200)
+    #print("monte expectations: \n" + str(featureexpectations))
+    #print("observed expectations: \n" + str(np.around(a=np.average([vec.vector for vec in featurevectors], axis=0),decimals=4)))
+    #montepickle = open('monteexpectations.pkl', 'wb')
+    #pickle.dump(featureexpectations, montepickle)
 
-    print('new states add: ' + str(len(observedstates) - originalstatelength))
-    with open('extendedstates.pkl', 'wb') as output:
-        pickle.dump(observedstates, output, -1)
+    #print('new states add: ' + str(len(observedstates) - originalstatelength))
+    #with open('extendedstates.pkl', 'wb') as output:
+    #    pickle.dump(observedstates, output, -1)
 
 
 

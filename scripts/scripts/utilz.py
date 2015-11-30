@@ -3,33 +3,75 @@ try:
    import cPickle as pickle
 except:
     import pickle 
-from SongData import *
-from SongData import SongData
-import GenerateRandomPolicy as grp
+
 import random 
 import copy
 from collections import Counter
 import midi
 import math
+import sklearn
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 import numpy as np
 import timeit
+import random
 import datetime
-def TransformedFeatureActionPairs(featurevectors,dim_red=lambda x: x):
-    TransformedFeatureMap = dict()
-    for feat in featurevectors:
-        trans_feat = FeatureClustr.transform(dim_red(feat.vector))
-        if trans_feat not in TransformedFeatureMap:
-            TransformedFeatureMap[trans_feat] = Counter()
-        TransformedFeatureMap[trans_feat][feat.actiongenerated] += 1
-    with open('TransformedFeatureMap.pkl', 'wb') as output:
-        pickle.dump(TransformedFeatureMap, output, -1)
+from routes import *
+import os.path
+import os
+import uuid
+from operator import itemgetter
+from collections import OrderedDict
+
+
+def DimReducer(X, transformers):
+    '''X is an array like and transformers is an ordered list of functions,
+    where the first element accepts an array the shape of and where all subsequent elements accept as their sole input an array like object the same shape as is output by their predecessor
+    '''
+    for transform in transformers:
+        X = transform(X)
+    return X
+def get_cmodels():
+    Ncluster = pickle.load(open(ncluster_pickle_string,'rb'))
+    Rcluster = pickle.load(open(rcluster_pickle_string,'rb'))
+    return [Ncluster,Rcluster]
+def clustermodelheuristic(feature,cmodels):
+    return cmodels[0] if feature[0] == 0 else cmodels[1]
+def ConstructTransformedFeatureActionMap():
+    from SongData import FeatureVector
+    
+    pca = pickle.load(open(pca_pickle_string,'rb'))
+    cmodels = get_cmodels()
+    tfam = dict()
+    tfam[0] = dict()
+    tfam[1] = dict()
+
+    features = pickle.load(open('featurevectors.pkl','rb'))
+    vectorset = set([f.vector for f in features])
+    print('about to map features to clusters' + str(datetime.datetime.now().time()))
+    #featureclustermap =  dict((vector,DimReducer(vector,[pca.transform,clustermodelheuristic(vector,cmodels).predict])[0]) for vector in list(vectorset))
+
+    #with open('fcm.pkl', 'wb') as output:
+    #    pickle.dump(featureclustermap, output, -1)
+    featureclustermap = pickle.load(open('fcm.pkl', 'rb'))
+    for idx,feature in enumerate(features):
+        if idx%1000==0:
+            print('adding the ' + str(idx/1000) + ' thousandth transformed feature.. current time is: ' + str(datetime.datetime.now().time()))
+        original = feature.vector
+        tfeat= featureclustermap[original]
+        parity = original[0]
+        if tfeat not in tfam[parity]:
+            tfam[parity][tfeat] = Counter()
+        featureactions = tfam[parity][tfeat]
+        featureactions[feature.actiongenerated] += 1
+    with open('tfam.pkl', 'wb') as output:
+        pickle.dump(tfam, output, -1)
 
 def IntegerizeArray(arr):
     return np.array(np.around(arr,decimals=0),dtype='int32')
 
 def empiricalestimate(songs):
+    from SongData import SongData
     accumulatations =np.array((len(songs[0].featurevectors[0].vector))*(0,))
     for song in songs:
         accumulatations = np.add(accumulatations,get_song_discounted_feature_expectations(song))
@@ -37,15 +79,16 @@ def empiricalestimate(songs):
     return expectations
 
 def get_song_discounted_feature_expectations(song, gamma = 0.9):
+    from SongData import SongData
     accumulatations =np.array((len(song.featurevectors[0].vector))*(0,))
     for timestep,feature in enumerate(song.featurevectors):
         accumulatations = np.add(accumulatations,math.pow(gamma,timestep)*np.array(feature.vector))
     return accumulatations
 
-def discount_and_accumulate_ordered_feature_vector_list(olist, gamma = 0.9):
-    accumulatations =np.array((len(olist[0]))*(0,))
+def discount_and_accumulate_ordered_feature_list(olist, gamma = 0.9):
+    accumulatations =np.array((len(olist[0].vector))*(0,))
     for timestep,feature in enumerate(olist):
-        accumulatations = np.add(accumulatations,math.pow(gamma,timestep)*np.array(feature))
+        accumulatations = np.add(accumulatations,math.pow(gamma,timestep)*np.array(feature.vector))
     return accumulatations
 
 def getOnes(vec):
